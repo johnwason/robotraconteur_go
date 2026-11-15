@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -24,11 +25,18 @@ const serverPort = 22222
 var serverURL = fmt.Sprintf("rr+tcp://localhost:%d?service=RobotRaconteurTestService", serverPort)
 var server2URL = fmt.Sprintf("rr+tcp://localhost:%d?service=RobotRaconteurTestService2", serverPort)
 
+func exeSuffix() string {
+	if runtime.GOOS == "windows" {
+		return ".exe"
+	}
+	return ""
+}
+
 func serverPath() string {
 	if p := os.Getenv("RRGO_CPP_TEST_SERVER"); p != "" {
 		return p
 	}
-	p, _ := filepath.Abs("../../build/rr/test/out_reldebug/bin/robotraconteur_test_server")
+	p, _ := filepath.Abs("../../build/rr/test/out_reldebug/bin/robotraconteur_test_server" + exeSuffix())
 	return p
 }
 
@@ -38,7 +46,10 @@ func TestMain(m *testing.M) {
 		fmt.Println("skipping interop tests: C++ test server not built (", path, ")")
 		os.Exit(0)
 	}
-	cmd := exec.Command(path)
+	// No discovery announce/listening, and TCP on localhost only: the tests must
+	// not reach the network (CI runners are not isolated like the dev container).
+	cmd := exec.Command(path, "--robotraconteur-discovery-listening-enable=false",
+		"--robotraconteur-discovery-announce-enable=false", "--robotraconteur-tcp-listen-localhost=true")
 	stdin, _ := cmd.StdinPipe()
 	stdout, _ := cmd.StdoutPipe()
 	cmd.Stderr = os.Stderr

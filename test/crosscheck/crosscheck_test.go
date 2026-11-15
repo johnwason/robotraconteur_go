@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	rr "github.com/robotraconteur/robotraconteur_go/robotraconteur"
@@ -18,6 +19,9 @@ import (
 const port = 22232
 
 func cppTest(name string) string {
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
 	if d := os.Getenv("RRGO_CPP_TEST_BIN_DIR"); d != "" {
 		return filepath.Join(d, name)
 	}
@@ -66,7 +70,9 @@ func TestMain(m *testing.M) {
 
 func runCpp(t *testing.T, name string) {
 	t.Helper()
-	cmd := exec.Command(cppTest(name))
+	// no discovery listening/announce: the tests must not reach the network
+	cmd := exec.Command(cppTest(name), "--robotraconteur-discovery-listening-enable=false",
+		"--robotraconteur-discovery-announce-enable=false")
 	cmd.Env = append(os.Environ(), fmt.Sprintf("ROBOTRACONTEUR_TEST_SERVER_URL=rr+tcp://localhost:%d", port))
 	out, err := cmd.CombinedOutput()
 	if err != nil {

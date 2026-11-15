@@ -126,7 +126,6 @@ Windows builds need `0005`-`0009`.
 
 Still open:
 
-- **Windows C++ test programs**: the interop and crosscheck tests need the upstream C++ test programs built
-  with MinGW-w64. They are not cross-built yet (they run `RobotRaconteurGen` during the build and need
-  GTest), so those two test packages skip on Windows.
+- **Native Windows build**: CI cross-builds from Linux. A native MSYS2 (MINGW64) build is expected to
+  work but is not tested.
 - **macOS**: not attempted.

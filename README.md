@@ -70,8 +70,9 @@ MinGW-w64 and Boost 1.83 built for MinGW (static) to the dev image.
 
 ```sh
 scripts/podman.sh mingw-image    # cross image, built on top of the dev image (once)
+scripts/podman.sh build          # Linux build: its generators are used by the cross build
 scripts/podman.sh mingw-build    # core + libRobotRaconteurGoNative.a into build-mingw/
-scripts/podman.sh build          # Linux build: its RobotRaconteurGenGo generates the test packages
+RR_TESTING=ON scripts/podman.sh mingw-build    # also the C++ test programs -> build-mingw/tests/cpp
 scripts/podman.sh mingw-tests    # go vet, go build, test binaries and examples -> build-mingw/tests/*.exe
 ```
 
@@ -260,11 +261,11 @@ not enabled. The tests cover:
 The interop and crosscheck tests need `RR_TESTING=ON` builds. Without the C++
 test programs they skip.
 
-On Windows, CI runs the cross-compiled test binaries for every package. The
-interop and crosscheck tests skip there, because the C++ test programs are not
-cross-built yet.
+On Windows, CI runs the cross-compiled test binaries for every package,
+including interop and crosscheck against the C++ test programs cross-built
+with MinGW-w64. The Go tests start those programs with node discovery
+disabled, because a CI runner is not isolated like the dev container.
 
 ## Not yet supported
 
 - macOS. The runtime is OS-neutral, but the core and toolchain setup for cgo has not been done.
-- Interop and crosscheck tests on Windows (needs the C++ test programs built with MinGW-w64).

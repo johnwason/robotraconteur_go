@@ -29,7 +29,7 @@ export GOFLAGS="${GOFLAGS:-} -p=2"
 
 go vet -unsafeptr=false ./...
 go build ./...
-rm -rf "$OUT" && mkdir -p "$OUT"
+mkdir -p "$OUT" && rm -rf "$OUT"/*.test.exe "$OUT/tests.txt" "$OUT/bin"   # keeps cpp/ (build_mingw.sh)
 # tests.txt: "<binary> <package dir>" per line; run each binary in its package
 # directory, as go test does (scripts/run_windows_tests.sh)
 MOD=$(go list -m)
@@ -44,4 +44,4 @@ done
 for d in $(go list -f '{{if eq .Name "main"}}{{.Dir}}{{end}}' ./...); do
   go build -o "$OUT/bin/" "$d"
 done
-ls -la "$OUT" "$OUT/bin"
+ls -la "$OUT" "$OUT/bin"; [ ! -d "$OUT/cpp" ] || ls -la "$OUT/cpp"

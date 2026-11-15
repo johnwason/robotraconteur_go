@@ -31,3 +31,9 @@ RUN --mount=type=cache,target=/var/cache/boost-dl \
  && cd / && rm -rf /tmp/boost /tmp/boost-b2.log
 
 COPY mingw-toolchain.cmake /opt/mingw64/toolchain.cmake
+
+# GoogleTest for MinGW (the upstream C++ test programs use it), from the
+# sources that libgtest-dev installs in the base image
+RUN cmake -S /usr/src/googletest -B /tmp/gtest -G Ninja -DCMAKE_TOOLCHAIN_FILE=/opt/mingw64/toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/mingw64 -DBUILD_GMOCK=OFF -Dgtest_disable_pthreads=OFF >/dev/null \
+ && cmake --build /tmp/gtest -j2 >/dev/null && cmake --install /tmp/gtest >/dev/null && rm -rf /tmp/gtest

@@ -12,8 +12,17 @@ BUILD=${BUILD:-$GO_DIR/build-mingw}
 JOBS=${JOBS:-2}
 BUILD_TYPE=${BUILD_TYPE:-Release}
 TOOLCHAIN=${TOOLCHAIN:-/opt/mingw64/toolchain.cmake}
-RR_TESTING_ARG=""
-if [ -n "${RR_TESTING:-}" ]; then RR_TESTING_ARG="-DBUILD_TESTING=$RR_TESTING"; fi
+# RR_TESTING=ON also builds the upstream C++ test programs used by test/interop
+# and test/crosscheck (linked with -static: no MinGW runtime DLLs needed). Their thunk code is generated with the Linux
+# RobotRaconteurGen from "scripts/podman.sh build" (HOST_RRGEN).
+HOST_RRGEN=${HOST_RRGEN:-$GO_DIR/build/install/bin/RobotRaconteurGen}
+RR_TESTING_ARG="-DBUILD_TESTING=OFF"
+if [ "${RR_TESTING:-OFF}" = ON ]; then
+  # PRE_TEST: gtest test discovery would run the .exe at build time
+  RR_TESTING_ARG="-DBUILD_TESTING=ON -DRobotRaconteurGen_EXECUTABLE=$HOST_RRGEN
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST"
+fi
+CPP_TESTS="robotraconteur_test_server robotraconteur_test_service robotraconteur_test_service2 robotraconteur_test_service3"
 
 mkdir -p "$BUILD"; [ -f "$BUILD/go.mod" ] || printf "module rrgo_build_ignore\n" > "$BUILD/go.mod"
 
@@ -27,9 +36,16 @@ cmake -S "$RR_SRC" -B "$BUILD/rr" -G Ninja \
   -DCMAKE_INSTALL_PREFIX="$BUILD/install" \
   -DCMAKE_PREFIX_PATH=/opt/mingw64 \
   -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-  -DBUILD_GEN=OFF ${RR_TESTING_ARG:--DBUILD_TESTING=OFF} -DBUILD_DOCUMENTATION=OFF
-cmake --build "$BUILD/rr" -j "$JOBS" ${TARGET:+--target "$TARGET"}
-cmake --install "$BUILD/rr" >/dev/null
+  -DCMAKE_EXE_LINKER_FLAGS=-static \
+  -DBUILD_GEN=OFF $RR_TESTING_ARG -DBUILD_DOCUMENTATION=OFF
+cmake --build "$BUILD/rr" -j "$JOBS" --target RobotRaconteurCore
+cmake --install "$BUILD/rr" --component Unspecified >/dev/null
+if [ "${RR_TESTING:-OFF}" = ON ]; then
+  # only the programs the Go tests run (not the GTest unit tests)
+  cmake --build "$BUILD/rr" -j 1 --target $CPP_TESTS
+  mkdir -p "$BUILD/tests/cpp"
+  for t in $CPP_TESTS; do cp "$(find "$BUILD/rr/test" -name "$t.exe" -path "*bin*" | head -1)" "$BUILD/tests/cpp/"; done
+fi
 fi
 
 if [ "$MODE" = "core" ]; then exit 0; fi
