@@ -1,10 +1,8 @@
-From 91ce8b3b53d13bf7eb845cdcad7e91ce34c2ef20 Mon Sep 17 00:00:00 2001
+From ff0072d4b4dbee09d01f8aeae6b6402f43289423 Mon Sep 17 00:00:00 2001
 From: John Wason <wason@wasontech.com>
 Date: Sun, 15 Nov 2026 11:56:18 -0500
 Subject: [PATCH 4/4] SWIG: release directors of closed pipe endpoints, wire
  connections and wire/pipe subscriptions
-
-[skip ci] (pushed to github-actions-scratch for the Go bindings CI only)
 
 A director held by a wrapped object keeps the wrapping language's object
 alive (it is referenced from the language's object heap until the director

@@ -1,10 +1,8 @@
-From 5d20efc38eda98710318a50a1547108e4df213c8 Mon Sep 17 00:00:00 2001
+From df2a59cae556a17412ef8a4b614a9b352a2be934 Mon Sep 17 00:00:00 2001
 From: John Wason <wason@wasontech.com>
 Date: Sun, 15 Nov 2026 10:46:12 -0500
 Subject: [PATCH 3/4] SWIG: let asynchronous service requests register
  generators from any thread
-
-[skip ci] (pushed to github-actions-scratch for the Go bindings CI only)
 
 WrappedServiceSkelAsyncAdapter captures the client ServerEndpoint when it is
 created on the request thread, and WrappedServiceSkel::RegisterGeneratorServer

@@ -1,5 +1,11 @@
 # Robot Raconteur Go bindings
 
+> **Work in progress, AI generated.** These bindings, the code generator,
+> the tests and this documentation were written by an AI coding assistant
+> (Claude) under human direction. They have not been fully reviewed, and the
+> API may change. Review before relying on them, especially the native
+> conversion layer and the public API.
+
 Go bindings for [Robot Raconteur](https://github.com/robotraconteur/robotraconteur).
 They are built the way the C# and Java bindings are: SWIG wraps the C++ core
 (using the upstream shared `SWIG/*.i` files), and a hand-written Go runtime
@@ -29,7 +35,9 @@ Everything builds inside the podman dev image (Ubuntu 24.04, SWIG 4.2,
 Go 1.27). The `robotraconteur` checkout is expected next to this directory
 and is mounted read-only. It must be upstream `7cd1610c` with the patches in
 [gen/upstream_merge/core-patches](gen/upstream_merge/core-patches) applied
-(`git am`). The patches fix a connector deadlock and add the SWIG
+(`git am`), as on branch `go-bindings-fixes` of
+[johnwason/robotraconteur](https://github.com/johnwason/robotraconteur/tree/go-bindings-fixes).
+The patches fix a connector deadlock and add the SWIG
 declarations the bindings use; see
 [gen/upstream_merge/README.md](gen/upstream_merge/README.md).
 

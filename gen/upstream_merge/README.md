@@ -66,8 +66,9 @@ added only by files in `swig/`:
 ## 3. Required upstream core changes
 
 The bindings are built against upstream `7cd1610c` plus the patches in
-`core-patches/`. They are applied on branch `rr-go-core-fixes` of the CI repository,
-which CI checks out:
+`core-patches/`. They are on branch
+[`go-bindings-fixes`](https://github.com/johnwason/robotraconteur/tree/go-bindings-fixes)
+of the johnwason/robotraconteur fork, which CI checks out:
 
 - **`0001`: connector self-deadlock (core bug, affects every language).**
   `RobotRaconteurNode_connector::connect2` held `active_lock` while it called
@@ -99,8 +100,6 @@ which CI checks out:
 
 None of the patches change the C++ library ABI. `0001` only touches a `.cpp` file; its class is declared in
 a private header and the exported symbols are identical. The Go bindings need `0002` and `0003` to build, and `0004` to release closed objects.
-Drop the `[skip ci]` line, which is only there for the CI repository, from the commit messages when
-upstreaming.
 
 Still open:
 

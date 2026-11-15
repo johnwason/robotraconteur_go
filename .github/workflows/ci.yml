@@ -5,11 +5,10 @@ on:
   workflow_dispatch:
 
 env:
-  # Upstream core plus the fixes in gen/upstream_merge/core-patches (branch
-  # rr-go-green-sync of this repository; its tip commit carries [skip ci] so the
-  # upstream workflows do not run on it).
-  RR_REPO: johnwason/github-actions-scratch
-  RR_REF: 91ce8b3b53d13bf7eb845cdcad7e91ce34c2ef20
+  # Upstream core (7cd1610c) plus the fixes in gen/upstream_merge/core-patches,
+  # from branch go-bindings-fixes of the johnwason/robotraconteur fork.
+  RR_REPO: johnwason/robotraconteur
+  RR_REF: ff0072d4b4dbee09d01f8aeae6b6402f43289423
 
 jobs:
   linux:
