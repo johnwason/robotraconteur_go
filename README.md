@@ -13,8 +13,8 @@ on top of it provides an idiomatic API. `RobotRaconteurGenGo` generates Go
 packages from `.robdef` files. It is a sibling of `RobotRaconteurGen`,
 written to be merged into it as `--lang=go`.
 
-Status: Linux (x86_64) only. The native core is linked statically into Go
-programs through cgo.
+Status: Linux (x86_64) and Windows (x86_64, MinGW-w64). The native core is
+linked statically into Go programs through cgo.
 
 ## Layout
 
@@ -27,7 +27,7 @@ programs through cgo.
 | `test/` | golden generator output, Go ports of the upstream test services and clients, loopback/interop/crosscheck tests |
 | `examples/reynard_the_robot/` | Reynard client, simulated service, `go:generate` usage |
 | `docker/`, `scripts/` | podman dev image and build/test scripts |
-| `.github/workflows/ci.yml` | Linux CI |
+| `.github/workflows/ci.yml` | Linux CI; Windows cross build (Linux) and tests (windows-2022) |
 
 ## Building
 
@@ -56,6 +56,35 @@ Build stages:
 - The SWIG Go file and `cgo_flags_linux.go` are written to `robotraconteur/internal/swig/`.
 
 Go programs then build with a plain `go build`, and SWIG is not needed at that point.
+
+### Windows (MinGW-w64)
+
+cgo needs a GCC-compatible C++ compiler on Windows, so the core and the
+native library are built with MinGW-w64 (posix thread model) rather than
+MSVC. The core also needs patches `0005`-`0009` from
+[gen/upstream_merge/core-patches](gen/upstream_merge/core-patches) on top of
+`0001`-`0004`.
+
+The tested path is a cross build from Linux in podman. The image adds
+MinGW-w64 and Boost 1.83 built for MinGW (static) to the dev image.
+
+```sh
+scripts/podman.sh mingw-image    # cross image, built on top of the dev image (once)
+scripts/podman.sh mingw-build    # core + libRobotRaconteurGoNative.a into build-mingw/
+scripts/podman.sh build          # Linux build: its RobotRaconteurGenGo generates the test packages
+scripts/podman.sh mingw-tests    # go vet, go build, test binaries and examples -> build-mingw/tests/*.exe
+```
+
+`mingw-build` writes `robotraconteur/internal/swig/cgo_flags_windows.go`.
+From then on, `GOOS=windows CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc-posix go build`
+works in the cross image. libstdc++, libgcc and winpthread are linked
+statically, so the programs need only Windows system DLLs. Copy
+`build-mingw/tests` to a Windows machine and run
+`scripts/run_windows_tests.sh` (Git Bash, repository root) to run the tests.
+
+A native build on Windows should work the same way with MSYS2's MINGW64
+toolchain, Boost and SWIG (`cmake -G Ninja` for the core with the patches,
+then for this directory), but CI does not test it.
 
 ## Generating service packages
 
@@ -231,6 +260,11 @@ not enabled. The tests cover:
 The interop and crosscheck tests need `RR_TESTING=ON` builds. Without the C++
 test programs they skip.
 
+On Windows, CI runs the cross-compiled test binaries for every package. The
+interop and crosscheck tests skip there, because the C++ test programs are not
+cross-built yet.
+
 ## Not yet supported
 
-- Windows and macOS. The runtime is OS-neutral, but the core and toolchain setup for cgo is Linux-only for now.
+- macOS. The runtime is OS-neutral, but the core and toolchain setup for cgo has not been done.
+- Interop and crosscheck tests on Windows (needs the C++ test programs built with MinGW-w64).

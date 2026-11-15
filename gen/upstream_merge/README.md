@@ -98,10 +98,35 @@ of the johnwason/robotraconteur fork, which CI checks out:
   director. Without these the director keeps the wrapping language's object reachable forever. The C#
   and Java bindings leak those objects in the same way.
 
+- **`0005`-`0009`: build the core with MinGW-w64 (Windows Go bindings).** cgo needs a GCC-compatible
+  toolchain on Windows, so the core must build with MinGW-w64. Every change is inside
+  `ROBOTRACONTEUR_WINDOWS`/`WIN32`/`MINGW` blocks or Windows-only sources:
+  - `0005`: lowercase Windows SDK header names (`winsock2.h`, `windows.h`, ...). MinGW-w64 installs them
+    in lowercase; MSVC is case-insensitive.
+  - `0006`: `LocalTransport_win`. The unused `HandleTo*Stream` helpers build `std::fstream` from a `FILE*`,
+    an MSVC-only extension; they are now compiled only with MSVC. The old MinGW workaround that redeclared
+    `ConvertStringSecurityDescriptorToSecurityDescriptor` now applies only when `sddl.h` lacks it.
+  - `0007`: `TlsSchannelStreamAdapter.h`. Drops `typedef typename` on non-dependent names (MSVC
+    permissive mode only), and defines two member templates after the class they call is complete.
+  - `0008`: `HardwareTransport_win`. **Fixes a handle leak with MSVC too**: two
+    `SetupDiGetClassDevsW` results were wrapped as `RR_SHARED_PTR<void>(deviceInfo_sp, f->SetupDiDestroyDeviceInfoList)`,
+    passing the empty `shared_ptr` instead of the handle. MSVC converts the function pointer to `void*` and
+    picks the aliasing constructor, so the device info list was never destroyed. Also `BTH_ADDR*` for
+    `PBTH_ADDR`, which MinGW-w64 lacks.
+  - `0009`: CMake. With MinGW, link the system import libraries by their MinGW names (`ws2_32`, `mswsock`,
+    `iphlpapi`, `bcrypt`, `crypt32`, `secur32`, plus `advapi32`, `user32`, `shell32` and `uuid`, which MSVC
+    links by default). Checked against the symbols the static core needs. MSVC lists are unchanged.
+
+  TLS uses SChannel, as with MSVC. The Linux build is unaffected: for the shared sources touched by
+  `0005`, the preprocessed Linux output is identical before and after.
+
 None of the patches change the C++ library ABI. `0001` only touches a `.cpp` file; its class is declared in
 a private header and the exported symbols are identical. The Go bindings need `0002` and `0003` to build, and `0004` to release closed objects.
+Windows builds need `0005`-`0009`.
 
 Still open:
 
-- **MinGW/cgo**: Windows support requires `RobotRaconteurCore` to build with a cgo-compatible toolchain
-  (MinGW-w64), or a C-ABI shim around an MSVC-built core.
+- **Windows C++ test programs**: the interop and crosscheck tests need the upstream C++ test programs built
+  with MinGW-w64. They are not cross-built yet (they run `RobotRaconteurGen` during the build and need
+  GTest), so those two test packages skip on Windows.
+- **macOS**: not attempted.
