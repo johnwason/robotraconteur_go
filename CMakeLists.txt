@@ -60,7 +60,14 @@ target_link_libraries(RobotRaconteurGoNative PUBLIC RobotRaconteurCore)
 # The SWIG wrapper is a very large translation unit; keep memory use bounded.
 set_source_files_properties("${RRGO_WRAP_CXX}" PROPERTIES COMPILE_OPTIONS "-g0")
 
-# cgo link flags for the internal swig package
+# cgo link flags for the internal swig package (one file per GOOS)
+if(WIN32)
+    set(RRGO_GOOS windows)
+elseif(APPLE)
+    set(RRGO_GOOS darwin)
+else()
+    set(RRGO_GOOS linux)
+endif()
 rrgo_collect_link_flags(RRGO_LINK_FLAGS RobotRaconteurGoNative)
 string(JOIN "\n" RRGO_LDFLAGS_LINES ${RRGO_LINK_FLAGS})
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/cgo_link_libs.txt" CONTENT "${RRGO_LDFLAGS_LINES}\n")
@@ -69,8 +76,8 @@ file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/cgo_link_libs.txt" CONTENT "${RRGO_LDF
 add_custom_target(
     rrgo_cgo_flags ALL
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/cmake/gen_cgo_flags.py" "${CMAKE_BINARY_DIR}/cgo_link_libs.txt"
-            "${RRGO_GO_PKG_DIR}/cgo_flags_linux.go" linux
-    BYPRODUCTS "${RRGO_GO_PKG_DIR}/cgo_flags_linux.go"
+            "${RRGO_GO_PKG_DIR}/cgo_flags_${RRGO_GOOS}.go" ${RRGO_GOOS}
+    BYPRODUCTS "${RRGO_GO_PKG_DIR}/cgo_flags_${RRGO_GOOS}.go"
     COMMENT "Generating cgo link flags"
     VERBATIM)
 add_dependencies(rrgo_cgo_flags RobotRaconteurGoNative)
@@ -95,7 +102,10 @@ target_link_libraries(RobotRaconteurGenGo RobotRaconteurCore Boost::program_opti
 # Generator golden test (ctest -R test_gen_go). Update with:
 #   cmake -DUPDATE=ON -DGEN=... -P cmake/check_golden.cmake (see scripts/update_golden.sh)
 enable_testing()
-add_test(NAME test_gen_go
-         COMMAND ${CMAKE_COMMAND} -DGEN=$<TARGET_FILE:RobotRaconteurGenGo> -DROBDEF_DIR=${RR_SOURCE_DIR}/test/robdef
-                 -DOUT=${CMAKE_BINARY_DIR}/gen_golden -DGOLDEN=${CMAKE_SOURCE_DIR}/test/golden -P
-                 ${CMAKE_SOURCE_DIR}/cmake/check_golden.cmake)
+# The golden test runs the generator, which a cross build cannot do.
+if(NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME test_gen_go
+             COMMAND ${CMAKE_COMMAND} -DGEN=$<TARGET_FILE:RobotRaconteurGenGo> -DROBDEF_DIR=${RR_SOURCE_DIR}/test/robdef
+                     -DOUT=${CMAKE_BINARY_DIR}/gen_golden -DGOLDEN=${CMAKE_SOURCE_DIR}/test/golden -P
+                     ${CMAKE_SOURCE_DIR}/cmake/check_golden.cmake)
+endif()

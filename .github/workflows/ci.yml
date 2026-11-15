@@ -52,6 +52,14 @@ jobs:
           # builds the upstream C++ test server used by the interop tests
           RR_TESTING: "ON"
         run: robotraconteur_go/scripts/podman.sh build
+      # The Windows cross build generates its test packages with this generator
+      - name: Strip generator
+        run: strip -o "${{ runner.temp }}/RobotRaconteurGenGo" robotraconteur_go/build/go/RobotRaconteurGenGo
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generator-linux
+          path: ${{ runner.temp }}/RobotRaconteurGenGo
+          retention-days: 1
       - name: Test (no network)
         env:
           RRGO_CACHE_DIR: ${{ runner.temp }}/rr-go-cache
@@ -62,3 +70,84 @@ jobs:
           RRGO_CACHE_DIR: ${{ runner.temp }}/rr-go-cache
           RR_SRC_DIR: ${{ github.workspace }}/robotraconteur
         run: robotraconteur_go/scripts/podman.sh shell scripts/check_upstream_merge.sh
+
+  # Windows: core and Go bindings cross-built with MinGW-w64 in podman (static,
+  # no MinGW DLLs needed), test binaries run on a Windows runner.
+  windows-build:
+    runs-on: ubuntu-24.04
+    needs: linux
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: robotraconteur_go
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.RR_REPO }}
+          ref: ${{ env.RR_REF }}
+          path: robotraconteur
+      - name: Restore MinGW image
+        id: image-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/rr-go-mingw.tar
+          key: rr-go-mingw-${{ hashFiles('robotraconteur_go/docker/*') }}
+      - name: Load or build MinGW image
+        run: |
+          if [ -f "${{ runner.temp }}/rr-go-mingw.tar" ]; then
+            podman load -i "${{ runner.temp }}/rr-go-mingw.tar"
+          else
+            robotraconteur_go/scripts/podman.sh mingw-image
+            podman save -o "${{ runner.temp }}/rr-go-mingw.tar" localhost/rr-go-mingw:latest
+          fi
+      - name: Restore build caches
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/rr-go-mingw-cache
+          key: rr-go-mingw-cache-${{ env.RR_REF }}-${{ github.sha }}
+          restore-keys: |
+            rr-go-mingw-cache-${{ env.RR_REF }}-
+            rr-go-mingw-cache-
+      - uses: actions/download-artifact@v4
+        with:
+          name: generator-linux
+          path: robotraconteur_go/build/go
+      - name: Cross-build core and Go native library
+        env:
+          RRGO_CACHE_DIR: ${{ runner.temp }}/rr-go-mingw-cache
+          RR_SRC_DIR: ${{ github.workspace }}/robotraconteur
+          JOBS: "2"
+        run: robotraconteur_go/scripts/podman.sh mingw-build
+      - name: Cross-compile Go tests and examples (includes go vet)
+        env:
+          RRGO_CACHE_DIR: ${{ runner.temp }}/rr-go-mingw-cache
+          RR_SRC_DIR: ${{ github.workspace }}/robotraconteur
+        run: |
+          chmod +x robotraconteur_go/build/go/RobotRaconteurGenGo
+          robotraconteur_go/scripts/podman.sh mingw-tests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-tests
+          path: robotraconteur_go/build-mingw/tests
+          retention-days: 3
+
+  windows-test:
+    runs-on: windows-2022
+    needs: windows-build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: robotraconteur_go
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-tests
+          path: robotraconteur_go/build-mingw/tests
+      - name: Check native dependencies (system DLLs only)
+        shell: bash
+        working-directory: robotraconteur_go
+        run: |
+          objdump -p build-mingw/tests/test_loopback.test.exe | grep "DLL Name" || true
+      # includes the examples (examples/reynard_the_robot/client test)
+      - name: Test (loopback, intra and local transports only)
+        shell: bash
+        working-directory: robotraconteur_go
+        run: scripts/run_windows_tests.sh

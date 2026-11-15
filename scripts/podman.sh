@@ -4,6 +4,11 @@
 #   scripts/podman.sh build          configure+build upstream core and Go bindings
 #   scripts/podman.sh test           run tests (no network)
 #   scripts/podman.sh shell [cmd..]  shell in the container (no network)
+# Windows (MinGW-w64 cross-build, output in build-mingw/):
+#   scripts/podman.sh mingw-image    build the cross image (on top of the dev image)
+#   scripts/podman.sh mingw-build [all|core|go]  cross-build core + Go native library
+#   scripts/podman.sh mingw-tests    cross-compile Go packages, tests and examples to .exe
+#                                    (needs the Linux generator from "build")
 # Upstream robotraconteur/ is mounted read-only (RR_SRC_DIR overrides its location).
 # Caches (ccache, Go build/module cache) live in the rr-go-cache volume, or in
 # $RRGO_CACHE_DIR when set (CI).
@@ -12,6 +17,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 RR_SRC_DIR="${RR_SRC_DIR:-$ROOT/robotraconteur}"
 IMAGE="${RRGO_IMAGE:-localhost/rr-go-dev:latest}"
+MINGW_IMAGE="${RRGO_MINGW_IMAGE:-localhost/rr-go-mingw:latest}"
 
 image() {
   podman build -t "$IMAGE" -f "$HERE/docker/Dockerfile.dev" "$HERE/docker"
@@ -48,5 +54,12 @@ case "$cmd" in
   # Network only for fetching Go modules into the cache volume.
   fetch) run slirp4netns "go mod download" ;;
   shell) run none "${*:-bash}" ;;
+  mingw-image)
+    podman image exists "$IMAGE" || image
+    podman build --build-arg BASE="$IMAGE" -t "$MINGW_IMAGE" -f "$HERE/docker/Dockerfile.mingw" "$HERE/docker" ;;
+  mingw-build|mingw-tests)
+    podman image exists "$MINGW_IMAGE" || "$0" mingw-image
+    IMAGE="$MINGW_IMAGE"
+    if [ "$cmd" = mingw-build ]; then run none "scripts/build_mingw.sh $*"; else run none "scripts/cross_test_build.sh $*"; fi ;;
   *) echo "unknown command $cmd" >&2; exit 2 ;;
 esac
