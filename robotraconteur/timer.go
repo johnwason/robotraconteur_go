@@ -90,9 +90,17 @@ func (t *Timer) SetPeriod(period time.Duration) error {
 // IsRunning reports whether the timer is running.
 func (t *Timer) IsRunning() bool { return t.native.IsRunning() }
 
-// Close stops the timer. Its native timer is released when the Timer is no
-// longer referenced; keep a reference to a running timer to stop it later.
-func (t *Timer) Close() error { return t.TryStop() }
+// Close stops the timer and releases its handler; no further handler calls
+// (including the Stopped event) follow, and the timer cannot be started
+// again. Close a repeating timer when done with it: the core keeps the
+// handler, and everything the handler closure references, until then. The
+// native timer is released when the Timer is no longer referenced.
+func (t *Timer) Close() error {
+	if err := t.TryStop(); err != nil {
+		return err
+	}
+	return callVoid(func() { t.native.Clear() })
+}
 
 // Rate sleeps to keep a loop at a fixed frequency, using the node's time
 // base. Create with Node.CreateRate.

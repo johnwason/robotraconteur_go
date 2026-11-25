@@ -74,9 +74,12 @@ func (t *TCPTransport) DefaultConnectTimeout() time.Duration {
 	return time.Duration(t.native.GetDefaultConnectTimeout()) * time.Millisecond
 }
 
-// SetDefaultConnectTimeout sets the connect timeout.
-func (t *TCPTransport) SetDefaultConnectTimeout(d time.Duration) {
-	t.native.SetDefaultConnectTimeout(int32(d.Milliseconds()))
+// SetDefaultConnectTimeout sets the connect timeout. It must be positive.
+func (t *TCPTransport) SetDefaultConnectTimeout(d time.Duration) error {
+	if d <= 0 {
+		return NewInvalidArgument("connect timeout must be positive")
+	}
+	return callVoid(func() { t.native.SetDefaultConnectTimeout(timeoutMs(d)) })
 }
 
 // EnableNodeDiscoveryListening listens for node announcements (UDP).

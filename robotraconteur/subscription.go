@@ -314,7 +314,7 @@ func (s *ServiceSubscription) ConnectRetryDelay() time.Duration {
 
 // SetConnectRetryDelay sets the delay between connection attempts.
 func (s *ServiceSubscription) SetConnectRetryDelay(d time.Duration) {
-	s.native.SetConnectRetryDelay(uint32(d.Milliseconds()))
+	s.native.SetConnectRetryDelay(settingMsU32(d))
 }
 
 // ServiceURL returns the URLs of a subscription by URL.

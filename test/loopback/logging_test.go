@@ -19,6 +19,13 @@ func TestLogging(t *testing.T) {
 	if err != nil || l != rr.LogLevelInfo || n.LogLevel() != rr.LogLevelInfo {
 		t.Fatalf("SetLogLevelFromString: %v %v", l, err)
 	}
+	// Robot Raconteur 1.3 rejects unknown names instead of ignoring them.
+	if _, err := n.SetLogLevelFromString("NOT_A_LEVEL"); err == nil {
+		t.Error("SetLogLevelFromString accepted an invalid level")
+	}
+	if n.LogLevel() != rr.LogLevelInfo {
+		t.Errorf("invalid level changed the log level to %v", n.LogLevel())
+	}
 
 	recs := make(chan rr.LogRecord, 16)
 	if err := n.SetLogRecordHandler(func(r rr.LogRecord) {
@@ -36,8 +43,8 @@ func TestLogging(t *testing.T) {
 		if r.Message != "go logging test" || r.Level != rr.LogLevelWarning {
 			t.Errorf("unexpected record %+v", r)
 		}
-		// Records from LogMessage carry no timestamp (not_a_date_time).
-		if (!r.Time.IsZero() && time.Since(r.Time) > time.Minute) || !strings.Contains(r.String(), "go logging test") {
+		// LogMessage sets the record time (Robot Raconteur 1.3)
+		if r.Time.IsZero() || time.Since(r.Time) > time.Minute || !strings.Contains(r.String(), "go logging test") {
 			t.Errorf("bad record time/string %v %q", r.Time, r.String())
 		}
 	case <-time.After(5 * time.Second):

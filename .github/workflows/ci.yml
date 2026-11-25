@@ -5,10 +5,10 @@ on:
   workflow_dispatch:
 
 env:
-  # Upstream core (7cd1610c) plus the fixes in gen/upstream_merge/core-patches,
-  # from branch go-bindings-fixes of the johnwason/robotraconteur fork.
+  # Robot Raconteur 1.3.0 with MinGW-w64 support (needed by the Windows build), branch
+  # mingw-support of johnwason/robotraconteur until it is merged upstream.
   RR_REPO: johnwason/robotraconteur
-  RR_REF: ff0072d4b4dbee09d01f8aeae6b6402f43289423
+  RR_REF: 95f3a7db82022af7ee842b688aca9efddf410fc0
 
 jobs:
   linux:
@@ -68,11 +68,6 @@ jobs:
           RRGO_CACHE_DIR: ${{ runner.temp }}/rr-go-cache
           RR_SRC_DIR: ${{ github.workspace }}/robotraconteur
         run: robotraconteur_go/scripts/podman.sh test
-      - name: Check upstream merge patch
-        env:
-          RRGO_CACHE_DIR: ${{ runner.temp }}/rr-go-cache
-          RR_SRC_DIR: ${{ github.workspace }}/robotraconteur
-        run: robotraconteur_go/scripts/podman.sh shell scripts/check_upstream_merge.sh
 
   # Windows: core and Go bindings cross-built with MinGW-w64 in podman (static,
   # no MinGW DLLs needed), test binaries run on a Windows runner.

@@ -1683,6 +1683,14 @@ func (rr_s *testroot3Skel) RRCallFunction(rr_ctx context.Context, rr_name string
 	return nil, rr.NewMemberNotFound("function " + rr_name + " not found")
 }
 
+func (rr_s *testroot3Skel) RRIsGeneratorFunction(rr_name string) bool {
+	switch rr_name {
+	case "gen_func1", "gen_func2", "gen_func3", "gen_func4", "gen_func5", "enum_generator1", "enum_generator2":
+		return true
+	}
+	return false
+}
+
 func (rr_s *testroot3Skel) RRGetSubObj(rr_ctx context.Context, rr_name, rr_index string) (any, string, error) {
 	switch rr_name {
 	case "o4":

@@ -39,6 +39,16 @@ type Testroot struct {
 }
 
 // NewTestroot creates the TestService1 root object.
+// RRMonitorEnter and RRMonitorExit make testroot not monitor lockable, like
+// the C++ testroot_impl, which does not implement IRobotRaconteurMonitorObject
+// (Go service objects are lockable by default). The upstream client test
+// ServiceTest.MonitorEnterFailureReleasesStubLock expects MonitorEnter to fail.
+func (r *Testroot) RRMonitorEnter(time.Duration) error {
+	return rr.NewInvalidArgument("Object is not monitor lockable")
+}
+
+func (r *Testroot) RRMonitorExit() {}
+
 func NewTestroot() *Testroot {
 	t := &Testroot{
 		o1: newSub1(), o2: map[int32]*sub1Impl{}, o3: map[int32]*sub1Impl{}, o4: map[string]*sub1Impl{},

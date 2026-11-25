@@ -2,6 +2,7 @@ package robotraconteur
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 )
 
@@ -93,12 +94,18 @@ type NamedMultiDimArray[T any] struct {
 	NamedArrayArray []T
 }
 
+// dimsCount returns the element count of dims, or -1 when it exceeds
+// math.MaxUint32 (the core's limit, MultiDimArray_CheckDimsElementCount), so
+// that a hostile dims vector cannot wrap to a small count.
 func dimsCount(dims []uint32) int {
-	n := 1
+	n := uint64(1)
 	for _, d := range dims {
-		n *= int(d)
+		n *= uint64(d)
+		if n > math.MaxUint32 {
+			return -1
+		}
 	}
-	return n
+	return int(n)
 }
 
 // VerifyArrayLength checks an array against a fixed (varlen false) or

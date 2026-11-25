@@ -1,6 +1,8 @@
 package robotraconteur
 
 import (
+	"fmt"
+	"math"
 	"sync"
 	"unsafe"
 
@@ -100,18 +102,42 @@ func dims32(d []uint64) []uint32 {
 	return o
 }
 
+// dims64Count returns the element count of dims; false when it exceeds
+// math.MaxUint32.
+func dims64Count(dims []uint64) (uint64, bool) {
+	n := uint64(1)
+	for _, d := range dims {
+		if d > math.MaxUint32 {
+			return 0, false
+		}
+		n *= d
+		if n > math.MaxUint32 {
+			return 0, false
+		}
+	}
+	return n, true
+}
+
 // mdCopy copies a count shaped block between two column-major arrays.
 func mdCopy[T any](src []T, srcDims, srcPos []uint64, dst []T, dstDims, dstPos, count []uint64) error {
 	nd := len(count)
 	if len(srcDims) != nd || len(srcPos) != nd || len(dstDims) != nd || len(dstPos) != nd {
 		return NewInvalidArgument("dimension count mismatch")
 	}
+	// Positions and counts come from the network: compare without wrapping
+	// (as the core's range checks do), and make sure both arrays hold their dims.
 	total := uint64(1)
 	for i := 0; i < nd; i++ {
-		if srcPos[i]+count[i] > srcDims[i] || dstPos[i]+count[i] > dstDims[i] {
+		if checkRange(srcDims[i], srcPos[i], count[i]) != nil || checkRange(dstDims[i], dstPos[i], count[i]) != nil {
 			return NewOutOfRange("multidimarray block out of range")
 		}
 		total *= count[i]
+	}
+	if n, ok := dims64Count(srcDims); !ok || n > uint64(len(src)) {
+		return NewInvalidArgument("multidimarray array smaller than its dims")
+	}
+	if n, ok := dims64Count(dstDims); !ok || n > uint64(len(dst)) {
+		return NewInvalidArgument("multidimarray array smaller than its dims")
 	}
 	if total == 0 {
 		return nil
@@ -739,6 +765,10 @@ func (d *multiDimArrayMemoryDirector[T]) Write(p swig.WrappedMultiDimArrayMemory
 		setDirectorError(err)
 		return
 	}
+	if dimsCount(dims) != len(a) {
+		setDirectorError(NewDataTypeError("multidimarray dims do not match the array length"))
+		return
+	}
 	if err := d.mem.Write(memorypos, &MultiDimArray[T]{Dims: dims, Array: a}, bufferpos, count); err != nil {
 		setDirectorError(err)
 	}
@@ -875,6 +905,9 @@ func (c mdListCodec[T]) pack(dims []uint32, a []T) (*NestedList, error) {
 }
 
 func (c mdListCodec[T]) unpack(l *NestedList) ([]uint32, []T, error) {
+	if l.Type != c.mdType || l.TypeName != c.typeName {
+		return nil, nil, NewDataTypeMismatch(fmt.Sprintf("multidimarray type mismatch: expected %s, got %s", c.typeName, l.TypeName))
+	}
 	de, err := FindElement(l.Elements, "dims")
 	if err != nil {
 		return nil, nil, err
@@ -887,12 +920,21 @@ func (c mdListCodec[T]) unpack(l *NestedList) ([]uint32, []T, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	if ae.Data == nil {
+		return nil, nil, NewNullValue("multidimarray array must not be null")
+	}
 	al, ok := ae.Data.(*NestedList)
 	if !ok {
 		return nil, nil, NewDataTypeError("invalid multidimarray format")
 	}
 	a, err := c.list.unpack(al)
-	return dims, a, err
+	if err != nil {
+		return nil, nil, err
+	}
+	if dimsCount(dims) != len(a) {
+		return nil, nil, NewDataTypeError("multidimarray dims do not match the array length")
+	}
+	return dims, a, nil
 }
 
 type elementMultiDimMemoryDirector[T any] struct {

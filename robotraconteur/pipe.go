@@ -316,5 +316,6 @@ func (e *PipeEndpoint[T]) Close() error {
 type asyncUInt32 struct{ handler func(uint32, error) }
 
 func (a *asyncUInt32) Handler(v uint32, info swig.HandlerErrorInfo) {
+	defer recoverDirector()
 	a.handler(v, errorFromInfo(info))
 }

@@ -9,7 +9,7 @@ import (
 
 // UserAuthenticator authenticates service users.
 type UserAuthenticator interface {
-	nativeAuthenticator() (swig.NativeUserAuthenticator, error)
+	nativeAuthenticator(n *Node) (swig.NativeUserAuthenticator, error)
 }
 
 // PasswordFileUserAuthenticator authenticates users against password file
@@ -25,7 +25,7 @@ func NewPasswordFileUserAuthenticator(data string) *PasswordFileUserAuthenticato
 	return &PasswordFileUserAuthenticator{Data: data}
 }
 
-func (a *PasswordFileUserAuthenticator) nativeAuthenticator() (swig.NativeUserAuthenticator, error) {
+func (a *PasswordFileUserAuthenticator) nativeAuthenticator(*Node) (swig.NativeUserAuthenticator, error) {
 	return call(func() swig.NativeUserAuthenticator {
 		p := swig.NewPasswordFileUserAuthenticator__SWIG_0(a.Data, a.RequireVerifiedClient)
 		if p == nil || p.Swigcptr() == 0 {
@@ -43,11 +43,11 @@ type ServiceSecurityPolicy struct {
 	Policies      map[string]string
 }
 
-func (p *ServiceSecurityPolicy) toNative() (swig.ServiceSecurityPolicy, error) {
+func (p *ServiceSecurityPolicy) toNative(n *Node) (swig.ServiceSecurityPolicy, error) {
 	if p.Authenticator == nil {
 		return nil, NewInvalidArgument("security policy requires an authenticator")
 	}
-	a, err := p.Authenticator.nativeAuthenticator()
+	a, err := p.Authenticator.nativeAuthenticator(n)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,8 @@ type AuthenticatedUser struct {
 type UserAuthenticatorFunc func(username string, credentials map[string]any, ctx *ServerContext) (*AuthenticatedUser, error)
 
 type userAuthenticatorDirector struct {
-	f UserAuthenticatorFunc
+	f    UserAuthenticatorFunc
+	node *Node
 }
 
 func (d *userAuthenticatorDirector) AuthenticateUser(username string, credentials swig.MessageElement, context swig.ServerContext) (ret swig.AuthenticatedUser) {
@@ -91,7 +92,9 @@ func (d *userAuthenticatorDirector) AuthenticateUser(username string, credential
 	}
 	var ctx *ServerContext
 	if context != nil && context.Swigcptr() != 0 {
-		ctx = &ServerContext{node: DefaultNode(), native: context}
+		// The director receives its own shared_ptr handle: release it with ctx.
+		ctx = &ServerContext{node: d.node, native: context}
+		addCleanup(ctx, context, swig.DeleteServerContext)
 	}
 	fail := func(err error) swig.AuthenticatedUser {
 		var rerr *Error
@@ -138,12 +141,12 @@ func (d *userAuthenticatorDirector) AuthenticateUser(username string, credential
 
 var _ swig.WrappedUserAuthenticatorDirectorMethods = (*userAuthenticatorDirector)(nil)
 
-func (f UserAuthenticatorFunc) nativeAuthenticator() (swig.NativeUserAuthenticator, error) {
+func (f UserAuthenticatorFunc) nativeAuthenticator(n *Node) (swig.NativeUserAuthenticator, error) {
 	if f == nil {
 		return nil, NewInvalidArgument("nil authenticator")
 	}
 	return call(func() swig.NativeUserAuthenticator {
-		impl := &userAuthenticatorDirector{f: f}
+		impl := &userAuthenticatorDirector{f: f, node: n}
 		d := swig.NewDirectorWrappedUserAuthenticatorDirector(impl)
 		id := heapAdd(impl, func() { swig.DeleteDirectorWrappedUserAuthenticatorDirector(d) })
 		w := swig.NewWrappedUserAuthenticator()

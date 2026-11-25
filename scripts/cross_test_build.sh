@@ -13,11 +13,14 @@ OUT=${OUT:-$GO_DIR/build-mingw/tests}
 cd "$GO_DIR"
 
 rm -rf test/gen && mkdir -p test/gen
-"$GEN" --thunksource --go-import-prefix=github.com/robotraconteur/robotraconteur_go/test/gen \
+"$GEN" --go-import-prefix=github.com/robotraconteur/robotraconteur_go/test/gen \
   -I "$RR_SRC/test/robdef" --output-dir test/gen \
   com.robotraconteur.testing.TestService1.robdef com.robotraconteur.testing.TestService2.robdef \
   com.robotraconteur.testing.TestService3.robdef com.robotraconteur.testing.TestService4.robdef \
   com.robotraconteur.testing.TestService5.robdef > /dev/null
+# Go-only generator regression cases (test/gennames)
+"$GEN" --go-import-prefix=github.com/robotraconteur/robotraconteur_go/test/gen \
+  --output-dir test/gen test/robdef/experimental.gen_test_go_names.robdef > /dev/null
 gofmt -w test/gen
 (cd examples/reynard_the_robot && rm -rf gen && mkdir -p /tmp/genbin && ln -sf "$GEN" /tmp/genbin/RobotRaconteurGenGo \
   && PATH=/tmp/genbin:$PATH go generate generate.go)

@@ -1,6 +1,7 @@
 package robotraconteur
 
 import (
+	"math"
 	"time"
 
 	swig "github.com/robotraconteur/robotraconteur_go/robotraconteur/internal/swig"
@@ -16,6 +17,9 @@ const TimeoutInfinite time.Duration = -1
 // TimeoutDefault uses the node's default timeout.
 const TimeoutDefault time.Duration = -2
 
+// timeoutMs converts a timeout, period or lifespan to native milliseconds:
+// TimeoutDefault -> -2, other negative values -> -1 (infinite), and positive
+// values rounded up, so that a sub-millisecond duration does not become 0.
 func timeoutMs(t time.Duration) int32 {
 	switch {
 	case t == TimeoutDefault:
@@ -23,11 +27,29 @@ func timeoutMs(t time.Duration) int32 {
 	case t < 0:
 		return -1
 	}
-	ms := t.Milliseconds()
-	if ms > 1<<31-1 {
-		return 1<<31 - 1
+	return int32(durationMsCeil(t, math.MaxInt32))
+}
+
+// durationMsCeil returns t (>= 0) in milliseconds, rounded up and clamped to max.
+func durationMsCeil(t time.Duration, max int64) int64 {
+	ms := t / time.Millisecond
+	if t%time.Millisecond != 0 {
+		ms++
 	}
-	return int32(ms)
+	if int64(ms) > max {
+		return max
+	}
+	return int64(ms)
+}
+
+// settingMsU32 converts a duration for a native uint32 millisecond setting.
+// The settings have no infinite value: negative durations (TimeoutInfinite)
+// give the largest one, about 49 days.
+func settingMsU32(t time.Duration) uint32 {
+	if t < 0 {
+		return math.MaxUint32
+	}
+	return uint32(durationMsCeil(t, math.MaxUint32))
 }
 
 // ---- AsyncRequestDirector: returns a message element ----
@@ -37,6 +59,7 @@ type asyncRequest struct {
 }
 
 func (d *asyncRequest) Handler(ret swig.MessageElement, info swig.HandlerErrorInfo) {
+	defer recoverDirector()
 	// Handles passed to directors are owned by Go.
 	if ret != nil && ret.Swigcptr() != 0 {
 		defer swig.DeleteMessageElement(ret)
@@ -62,6 +85,7 @@ func newAsyncRequest(handler func(*Element, error)) (swig.AsyncRequestDirector, 
 type asyncVoid struct{ handler func(error) }
 
 func (d *asyncVoid) Handler(info swig.HandlerErrorInfo) {
+	defer recoverDirector()
 	err := errorFromInfo(info)
 	d.handler(err)
 }
@@ -77,7 +101,10 @@ func newAsyncVoid(handler func(error)) (swig.AsyncVoidReturnDirector, int32) {
 
 type asyncVoidNoErr struct{ handler func() }
 
-func (d *asyncVoidNoErr) Handler() { d.handler() }
+func (d *asyncVoidNoErr) Handler() {
+	defer recoverDirector()
+	d.handler()
+}
 
 func newAsyncVoidNoErr(handler func()) (swig.AsyncVoidNoErrReturnDirector, int32) {
 	impl := &asyncVoidNoErr{handler: handler}
@@ -91,6 +118,7 @@ func newAsyncVoidNoErr(handler func()) (swig.AsyncVoidNoErrReturnDirector, int32
 type asyncString struct{ handler func(string, error) }
 
 func (d *asyncString) Handler(ret string, info swig.HandlerErrorInfo) {
+	defer recoverDirector()
 	err := errorFromInfo(info)
 	d.handler(ret, err)
 }
@@ -110,6 +138,7 @@ type asyncStub struct {
 }
 
 func (d *asyncStub) Handler(stub swig.WrappedServiceStub, info swig.HandlerErrorInfo) {
+	defer recoverDirector()
 	err := errorFromInfo(info)
 	var obj any
 	if err == nil {

@@ -281,7 +281,7 @@ func (n *Node) RequestTimeout() time.Duration {
 
 // SetRequestTimeout sets the default timeout for requests.
 func (n *Node) SetRequestTimeout(t time.Duration) {
-	n.native.SetRequestTimeout(uint32(t.Milliseconds()))
+	n.native.SetRequestTimeout(settingMsU32(t))
 }
 
 // TransportInactivityTimeout returns the transport inactivity timeout.
@@ -291,7 +291,7 @@ func (n *Node) TransportInactivityTimeout() time.Duration {
 
 // SetTransportInactivityTimeout sets the transport inactivity timeout.
 func (n *Node) SetTransportInactivityTimeout(t time.Duration) {
-	n.native.SetTransportInactivityTimeout(uint32(t.Milliseconds()))
+	n.native.SetTransportInactivityTimeout(settingMsU32(t))
 }
 
 // EndpointInactivityTimeout returns the endpoint inactivity timeout.
@@ -301,7 +301,7 @@ func (n *Node) EndpointInactivityTimeout() time.Duration {
 
 // SetEndpointInactivityTimeout sets the endpoint inactivity timeout.
 func (n *Node) SetEndpointInactivityTimeout(t time.Duration) {
-	n.native.SetEndpointInactivityTimeout(uint32(t.Milliseconds()))
+	n.native.SetEndpointInactivityTimeout(settingMsU32(t))
 }
 
 // MemoryMaxTransferSize returns the maximum memory transfer chunk size in bytes.

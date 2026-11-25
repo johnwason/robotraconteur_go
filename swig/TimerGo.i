@@ -18,3 +18,14 @@ WallTimer(const boost::posix_time::time_duration& period, bool oneshot, const bo
 	return new WallTimer(period,boost::bind(&TimerHandlerFunc,RR_BOOST_PLACEHOLDERS(_1),sphandler),oneshot,node);
 }
 }
+
+// Timer::Clear releases the handler (and with it the Go director). A repeating
+// timer keeps its handler until Clear or destruction; Stop/TryStop do not
+// release it (RobotRaconteurCore Timer.h).
+%extend RobotRaconteur::Timer
+{
+void Clear()
+{
+	$self->Clear();
+}
+}

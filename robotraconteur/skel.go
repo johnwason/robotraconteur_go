@@ -17,7 +17,8 @@ type ServiceSkel interface {
 	// creates pipe/wire servers, connects events and attaches callbacks.
 	RRInit(b *SkelBase) error
 	// Requests run on their own goroutine with a ctx describing the request
-	// (see CurrentEndpoint).
+	// (see CurrentEndpoint), except generator function calls
+	// (GeneratorFunctionSkel).
 	RRCallGetProperty(ctx context.Context, name string) (*Element, error)
 	RRCallSetProperty(ctx context.Context, name string, value *Element) error
 	RRCallFunction(ctx context.Context, name string, args []*Element) (*Element, error)
@@ -25,6 +26,17 @@ type ServiceSkel interface {
 	// qualified object type.
 	RRGetSubObj(ctx context.Context, name, index string) (obj any, objectType string, err error)
 	RRGetMemory(name string) (*MemoryServer, error)
+}
+
+// GeneratorFunctionSkel is implemented by generated skeletons of objects
+// with generator functions. A call to a generator function runs
+// synchronously on the core's request thread (not on its own goroutine):
+// the returned generator is registered for the client of the current
+// request, which the core only knows on that thread. Implementations should
+// return the generator quickly; its Next, Abort and Close calls run on their
+// own goroutines like other requests.
+type GeneratorFunctionSkel interface {
+	RRIsGeneratorFunction(name string) bool
 }
 
 // ServiceObjectTyper may be implemented by service objects to report their
@@ -206,9 +218,17 @@ func (d *skelDirector) X_CallFunction(name string, args swig.Vectorptr_messageel
 		setDirectorError(err)
 		return nil
 	}
-	return d.serve(async, func(ctx context.Context) (*Element, error) {
+	call := func(ctx context.Context) (*Element, error) {
 		return d.b.impl.RRCallFunction(ctx, name, elems)
-	})
+	}
+	if g, ok := d.b.impl.(GeneratorFunctionSkel); ok && g.RRIsGeneratorFunction(name) {
+		// synchronous: see GeneratorFunctionSkel
+		if async != nil && async.Swigcptr() != 0 {
+			swig.DeleteWrappedServiceSkelAsyncAdapter(async)
+		}
+		return d.serve(nil, call)
+	}
+	return d.serve(async, call)
 }
 
 func (d *skelDirector) returnElement(e *Element, err error) swig.MessageElement {
@@ -409,7 +429,7 @@ func (n *Node) RegisterService(name, objectType string, obj any, opts ...Service
 		defer swig.DeleteRRObject(rro)
 		nn := swig.SwigcptrRobotRaconteurNode(n.native.Swigcptr())
 		if o.policy != nil {
-			p, err := o.policy.toNative()
+			p, err := o.policy.toNative(n)
 			if err != nil {
 				cerr = err
 				return nil

@@ -1,0 +1,18 @@
+service experimental.gen_test_go_names
+
+stdver 0.10
+
+# Go generator regression cases (no upstream counterpart):
+# negative values of unsigned constants wrap like in the core and the other
+# generators; parameter names that shadow imported packages or Go types.
+constant uint32 u32_neg -1
+constant uint16 u16_neg -2
+constant uint64[] u64_neg_array {0, -0x1, 5}
+constant int32[] i32_array { -1, 0x10 }
+
+object testobj
+    function double f(int32 rr, double float64, string context)
+    function void g(uint8 time, int64 sync, string strconv)
+    event e(int32 rr, uint8 time)
+    callback void cb(int32 sync, double float32)
+end

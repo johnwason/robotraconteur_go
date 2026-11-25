@@ -57,17 +57,20 @@ func (n *Node) awaitString(ctx context.Context, start func(t int32, d swig.Async
 // exclusive lock across all clients of the object). The Robot Raconteur
 // monitor lock belongs to the calling OS thread, so the goroutine is locked
 // to its thread while f runs; f must make its calls on this goroutine.
-func (n *Node) WithMonitorLock(obj any, timeout time.Duration, f func() error) error {
+// The lock is released also when f panics.
+func (n *Node) WithMonitorLock(obj any, timeout time.Duration, f func() error) (err error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	if err := n.MonitorEnter(obj, timeout); err != nil {
 		return err
 	}
-	ferr := f()
-	if err := n.MonitorExit(obj); err != nil && ferr == nil {
-		return err
-	}
-	return ferr
+	// Deferred after UnlockOSThread, so it runs first, on the locked thread.
+	defer func() {
+		if xerr := n.MonitorExit(obj); xerr != nil && err == nil {
+			err = xerr
+		}
+	}()
+	return f()
 }
 
 // MonitorEnter acquires the monitor lock of obj. The lock belongs to the

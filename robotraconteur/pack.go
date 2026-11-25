@@ -249,7 +249,7 @@ func PackPodMultiDimArray[T Pod](name string, v *PodMultiDimArray[T]) (*Element,
 
 func unpackPodArrayList[T Pod, P PodPtr[T]](l *NestedList) ([]T, error) {
 	var zero T
-	if l.TypeName != zero.RRType() {
+	if l.Type != DataTypePodArray || l.TypeName != zero.RRType() {
 		return nil, NewDataTypeMismatch(fmt.Sprintf("pod type mismatch: expected %s, got %s", zero.RRType(), l.TypeName))
 	}
 	o := make([]T, len(l.Elements))
@@ -413,7 +413,7 @@ func PackNamedMultiDimArray[T NamedArray[E], E Primitive](name string, v *NamedM
 
 func unpackNamedArrayList[T NamedArray[E], E Primitive, P NamedArrayPtr[T, E]](l *NestedList) ([]T, error) {
 	var zero T
-	if l.TypeName != zero.RRType() {
+	if l.Type != DataTypeNamedArrayArray || l.TypeName != zero.RRType() {
 		return nil, NewDataTypeMismatch(fmt.Sprintf("namedarray type mismatch: expected %s, got %s", zero.RRType(), l.TypeName))
 	}
 	if len(l.Elements) != 1 {

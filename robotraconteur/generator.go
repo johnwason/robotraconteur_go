@@ -291,20 +291,20 @@ func (d *generatorServerDirector) Close(async swig.WrappedServiceSkelAsyncAdapte
 
 var _ swig.WrappedGeneratorServerDirectorMethods = (*generatorServerDirector)(nil)
 
-// registerGenerator registers a generator for the client of the request ctx
-// belongs to (from any goroutine, using the endpoint captured with it).
+// registerGenerator registers a generator for the client of the current
+// request. The core identifies the client by the thread-local current
+// endpoint, so it must be called on the request thread: generator function
+// calls run synchronously (GeneratorFunctionSkel).
 func (b *SkelBase) registerGenerator(ctx context.Context, name string, impl *generatorServerDirector) (*Element, error) {
 	impl.node = b.node
-	r, _ := requestFrom(ctx)
+	if r, err := requestFrom(ctx); err == nil && r.adapter != nil {
+		return nil, NewInvalidOperation("generator function " + name + " called asynchronously")
+	}
 	d := swig.NewDirectorWrappedGeneratorServerDirector(impl)
 	id := heapAdd(impl, func() { swig.DeleteDirectorWrappedGeneratorServerDirector(d) })
 	d.SetObjectheapid(id)
 	idx, err := call(func() int32 {
-		s := swig.SwigcptrWrappedServiceSkel(b.inner.Swigcptr())
-		if r != nil && r.adapter != nil && r.adapter.native != nil {
-			return s.RegisterGeneratorServer__SWIG_1(name, d, r.adapter.native)
-		}
-		return s.RegisterGeneratorServer__SWIG_0(name, d)
+		return swig.SwigcptrWrappedServiceSkel(b.inner.Swigcptr()).RegisterGeneratorServer(name, d)
 	})
 	if err != nil {
 		return nil, err

@@ -52,12 +52,20 @@ struct GenContext
     GenContext() : uses_time(false), uses_strconv(false), uses_sync(false), uses_context(false) {}
 };
 
+// Go keywords and predeclared or imported names that a robdef name (in
+// particular a function, event or callback parameter, which VerifyName does
+// not check) must not shadow in generated code; such names get a "_" suffix.
 const char* go_keywords[] = {"break",     "case",   "chan",   "const",  "continue", "default", "defer",
                              "else",      "fallthrough", "for", "func",   "go",       "goto",    "if",
                              "import",    "interface", "map",   "package", "range",   "return",  "select",
                              "struct",    "switch", "type",   "var",    "string",   "error",   "any",
                              "bool",      "int",    "uint",   "len",    "cap",      "make",    "new",
-                             "nil",       "true",   "false",  "append", "copy",     "byte",    "rune"};
+                             "nil",       "true",   "false",  "append", "copy",     "byte",    "rune",
+                             // predeclared types used in generated codecs, and iota/comparable
+                             "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "uintptr",
+                             "float32", "float64", "complex64", "complex128", "iota", "comparable",
+                             // packages imported by generated files (parameters are in scope in the bodies)
+                             "rr", "context", "strconv", "sync", "time"};
 
 std::string fix_local(const std::string& name)
 {
@@ -745,6 +753,40 @@ void GenerateNamedArray(GenContext& ctx, const RR_SHARED_PTR<ServiceEntryDefinit
 
 std::string ConstantGoName(const std::string& prefix, const std::string& name) { return prefix + exported(name); }
 
+// A numeric constant value as a Go literal. The robdef text is valid Go for
+// every form the parser accepts, except negative values of unsigned types,
+// which the core (and the other generators) wrap modulo 2^N. Those are
+// emitted as the wrapped decimal value, so the Go constant compiles and
+// matches the other languages.
+template <typename T>
+std::string go_wrapped_unsigned(const std::string& v)
+{
+    T r = 0;
+    if (!RobotRaconteur::detail::try_convert_string_to_number(v, r))
+        throw ServiceDefinitionException("Invalid constant value: " + v);
+    return boost::lexical_cast<std::string>(static_cast<uint64_t>(r));
+}
+
+std::string go_number_literal(DataTypes type, const std::string& text)
+{
+    std::string v = boost::trim_copy(text);
+    if (!boost::starts_with(v, "-"))
+        return v;
+    switch (type)
+    {
+    case DataTypes_uint8_t:
+        return go_wrapped_unsigned<uint8_t>(v);
+    case DataTypes_uint16_t:
+        return go_wrapped_unsigned<uint16_t>(v);
+    case DataTypes_uint32_t:
+        return go_wrapped_unsigned<uint32_t>(v);
+    case DataTypes_uint64_t:
+        return go_wrapped_unsigned<uint64_t>(v);
+    default:
+        return v;
+    }
+}
+
 void GenerateConstant(GenContext& ctx, const RR_SHARED_PTR<ConstantDefinition>& c,
                       const std::vector<RR_SHARED_PTR<ConstantDefinition> >& scope, const std::string& prefix,
                       std::ostream& w)
@@ -785,13 +827,28 @@ void GenerateConstant(GenContext& ctx, const RR_SHARED_PTR<ConstantDefinition>& 
     std::string p = go_primitive(t->Type);
     if (t->ArrayType == DataTypes_ArrayTypes_none)
     {
-        w << "const " << name << " " << p << " = " << boost::trim_copy(c->Value) << "\n\n";
+        w << "const " << name << " " << p << " = " << go_number_literal(t->Type, c->Value) << "\n\n";
     }
     else
     {
         std::string v = boost::trim_copy(c->Value);
         if (boost::starts_with(v, "{") && boost::ends_with(v, "}"))
             v = v.substr(1, v.size() - 2);
+        std::vector<std::string> items;
+        boost::split(items, v, boost::is_any_of(","));
+        std::vector<std::string> lits;
+        bool changed = false;
+        BOOST_FOREACH (const std::string& it, items)
+        {
+            std::string e = boost::trim_copy(it);
+            if (e.empty())
+                continue;
+            lits.push_back(go_number_literal(t->Type, e));
+            changed = changed || lits.back() != e;
+        }
+        // keep the robdef text unless a value had to be rewritten
+        if (changed)
+            v = boost::join(lits, ", ");
         w << "var " << name << " = []" << p << "{" << v << "}\n\n";
     }
 }
@@ -1429,6 +1486,20 @@ void GenerateSkel(GenContext& ctx, const RR_SHARED_PTR<ServiceEntryDefinition>& 
         }
     }
     w << "\t}\n\t_ = rr_args\n\treturn nil, rr.NewMemberNotFound(\"function \" + rr_name + \" not found\")\n}\n\n";
+
+    // generator functions run synchronously on the request thread (rr.GeneratorFunctionSkel)
+    std::vector<std::string> gen_funcs;
+    BOOST_FOREACH (const RR_SHARED_PTR<MemberDefinition>& m, e->Members)
+    {
+        RR_SHARED_PTR<FunctionDefinition> f = RR_DYNAMIC_POINTER_CAST<FunctionDefinition>(m);
+        if (f && f->IsGenerator())
+            gen_funcs.push_back(go_string_literal(f->Name));
+    }
+    if (!gen_funcs.empty())
+    {
+        w << "func (rr_s *" << kn << ") RRIsGeneratorFunction(rr_name string) bool {\n\tswitch rr_name {\n\tcase "
+          << boost::join(gen_funcs, ", ") << ":\n\t\treturn true\n\t}\n\treturn false\n}\n\n";
+    }
 
     // objrefs
     w << "func (rr_s *" << kn
