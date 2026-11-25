@@ -18,5 +18,5 @@ PKGS=${*:-./...}
 go vet -unsafeptr=false $PKGS
 # test/interop and test/crosscheck run concurrently with C++ test programs on
 # the local transport; this also guards against the connector deadlock fixed
-# in core (gen/upstream_merge/README.md).
+# in core 1.3.0 (b5d325c0).
 go test -count=1 -timeout 600s $PKGS

@@ -94,10 +94,12 @@ add_custom_command(
     VERBATIM)
 add_custom_target(rrgo_errors ALL DEPENDS "${CMAKE_SOURCE_DIR}/robotraconteur/errors_gen.go")
 
-# RobotRaconteurGenGo: Go thunk source generator (sibling of RobotRaconteurGen)
+# RobotRaconteurGenGo: stand-alone Go thunk source generator (uses the core robdef parser)
 find_package(Boost REQUIRED COMPONENTS program_options filesystem)
 add_executable(RobotRaconteurGenGo gen/main.cpp gen/GoServiceLangGen.cpp gen/GoServiceLangGen.h)
 target_link_libraries(RobotRaconteurGenGo RobotRaconteurCore Boost::program_options Boost::filesystem)
+include(GNUInstallDirs)
+install(TARGETS RobotRaconteurGenGo RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Generator golden test (ctest -R test_gen_go). Update with:
 #   cmake -DUPDATE=ON -DGEN=... -P cmake/check_golden.cmake (see scripts/update_golden.sh)

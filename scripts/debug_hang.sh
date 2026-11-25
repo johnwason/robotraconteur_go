@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reproduces the local transport connector deadlock (gen/upstream_merge/README.md)
+# Reproduces the local transport connector deadlock (fixed in Robot Raconteur 1.3.0, b5d325c0)
 # and saves native backtraces. Run with
 #   RRGO_PODMAN_ARGS="--cap-add=SYS_PTRACE --security-opt seccomp=unconfined" scripts/podman.sh shell bash scripts/debug_hang.sh
 set -u

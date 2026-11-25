@@ -1,6 +1,5 @@
-# Runs RobotRaconteurGenGo for the upstream test service definitions and
-# compares the output byte for byte with test/golden (like upstream
-# RobotRaconteurGen test_gen_<lang>). Set UPDATE=ON to rewrite the golden files.
+# Runs RobotRaconteurGenGo for the core's test service definitions and
+# compares the output byte for byte with test/golden. Set UPDATE=ON to rewrite the golden files.
 file(REMOVE_RECURSE "${OUT}")
 file(MAKE_DIRECTORY "${OUT}")
 execute_process(

@@ -12,12 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// RobotRaconteurGenGo: sibling of RobotRaconteurGen generating Go thunk
-// sources. Command line compatible with "RobotRaconteurGen --thunksource
-// --lang=go" (plus --go-import-prefix). ReadFile/ReadRobDefFile are copied
-// from RobotRaconteurGen.cpp; see gen/upstream_merge for merging.
+// RobotRaconteurGenGo: generates Go packages from Robot Raconteur service
+// definitions (.robdef). Robdef files are parsed and verified with the core
+// library, so the accepted language is the same as RobotRaconteurGen's.
+//
+//   RobotRaconteurGenGo [--output-dir DIR] [-I DIR]... [--import FILE]...
+//                       [--auto-import] [--go-import-prefix PREFIX] FILE...
+//
+// --thunksource and --lang=go are accepted for compatibility with the
+// RobotRaconteurGen command line; generating is the only action.
 
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <streambuf>
 #include <set>
@@ -86,7 +92,7 @@ boost::tuple<RR_SHARED_PTR<ServiceDefinition>, std::string> ReadRobDefFile(const
     {
         if (try_find)
             return boost::make_tuple(RR_SHARED_PTR<ServiceDefinition>(), "");
-        std::cout << "RobotRaconteurGenGo: fatal error: input file not found " << s << std::endl;
+        std::cerr << "RobotRaconteurGenGo: fatal error: input file not found " << s << std::endl;
         exit(1002);
     }
     try
@@ -95,7 +101,7 @@ boost::tuple<RR_SHARED_PTR<ServiceDefinition>, std::string> ReadRobDefFile(const
         std::string file_contents;
         if (!ReadFile(file_contents, s))
         {
-            std::cout << "RobotRaconteurGenGo: fatal error: could not open file " << s << std::endl;
+            std::cerr << "RobotRaconteurGenGo: fatal error: could not open file " << s << std::endl;
             exit(1004);
         }
         ServiceDefinitionParseInfo parse_info;
@@ -106,12 +112,12 @@ boost::tuple<RR_SHARED_PTR<ServiceDefinition>, std::string> ReadRobDefFile(const
     }
     catch (ServiceDefinitionParseException& ee)
     {
-        std::cout << s << "(" << ee.ParseInfo.LineNumber << "): error: " << ee.ShortMessage << std::endl;
+        std::cerr << s << "(" << ee.ParseInfo.LineNumber << "): error: " << ee.ShortMessage << std::endl;
         exit(1005);
     }
     catch (std::exception& ee)
     {
-        std::cout << s << ": error: " << std::string(ee.what()) << std::endl;
+        std::cerr << s << ": error: " << std::string(ee.what()) << std::endl;
         exit(1006);
     }
 }
@@ -135,7 +141,7 @@ int main(int argc, char* argv[])
         po::options_description generic_("Allowed options");
         generic_.add_options()("help,h", "print usage message")("version", "print program version")(
             "output-dir", po::value(&output_dir)->default_value("."), "directory for output")(
-            "thunksource", po::bool_switch(&thunksource), "generate RR thunk source files")(
+            "thunksource", po::bool_switch(&thunksource), "generate Go packages (the default action)")(
             "lang", po::value(&lang)->default_value("go"), "language to generate thunk code for (go)")(
             "include-path,I", po::value(&include_dirs)->composing(), "include path")(
             "import", po::value(&imports)->composing(), "input file for use in imports")(
@@ -165,19 +171,15 @@ int main(int argc, char* argv[])
             std::cout << "RobotRaconteurGenGo version " << ROBOTRACONTEUR_VERSION_TEXT << std::endl;
             return 0;
         }
-        if (!thunksource)
-        {
-            std::cout << "RobotRaconteurGenGo: fatal error: no command specified (--thunksource)" << std::endl;
-            return 1;
-        }
+        (void)thunksource; // generating thunk sources is the only action
         if (lang != "go")
         {
-            std::cout << "RobotRaconteurGenGo: fatal error: invalid lang specified for thunksource" << std::endl;
+            std::cerr << "RobotRaconteurGenGo: fatal error: invalid lang specified for thunksource" << std::endl;
             return 1012;
         }
         if (sources.empty())
         {
-            std::cout << "RobotRaconteurGenGo: fatal error: no files specified for thunksource" << std::endl;
+            std::cerr << "RobotRaconteurGenGo: fatal error: no files specified for thunksource" << std::endl;
             return 1001;
         }
 
@@ -198,7 +200,7 @@ int main(int argc, char* argv[])
 
         if (!fs::exists(output_dir))
         {
-            std::cout << "RobotRaconteurGenGo: fatal error: output directory not found " << output_dir << std::endl;
+            std::cerr << "RobotRaconteurGenGo: fatal error: output directory not found " << output_dir << std::endl;
             return 1003;
         }
 
@@ -259,19 +261,19 @@ int main(int argc, char* argv[])
             VerifyServiceDefinitions(alldefs, warnings);
             BOOST_FOREACH (ServiceDefinitionParseException w, warnings)
             {
-                std::cout << w.ParseInfo.RobDefFilePath << "(" << w.ParseInfo.LineNumber
+                std::cerr << w.ParseInfo.RobDefFilePath << "(" << w.ParseInfo.LineNumber
                           << "): warning: " << w.ShortMessage << std::endl;
             }
         }
         catch (ServiceDefinitionParseException& ee)
         {
-            std::cout << ee.ParseInfo.RobDefFilePath << "(" << ee.ParseInfo.LineNumber
+            std::cerr << ee.ParseInfo.RobDefFilePath << "(" << ee.ParseInfo.LineNumber
                       << "): error: " << ee.ShortMessage << std::endl;
             return 1007;
         }
         catch (ServiceDefinitionVerifyException& ee)
         {
-            std::cout << ee.ParseInfo.RobDefFilePath << "(" << ee.ParseInfo.LineNumber
+            std::cerr << ee.ParseInfo.RobDefFilePath << "(" << ee.ParseInfo.LineNumber
                       << "): error: " << ee.ShortMessage << std::endl;
             return 1008;
         }
@@ -284,7 +286,7 @@ int main(int argc, char* argv[])
     }
     catch (std::exception& e)
     {
-        std::cout << "RobotRaconteurGenGo: fatal error: " << e.what() << std::endl;
+        std::cerr << "RobotRaconteurGenGo: fatal error: " << e.what() << std::endl;
         return 1009;
     }
 }

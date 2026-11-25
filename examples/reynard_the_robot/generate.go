@@ -7,5 +7,5 @@
 package reynard_the_robot
 
 //go:generate mkdir -p gen
-//go:generate RobotRaconteurGenGo --thunksource --go-import-prefix=github.com/robotraconteur/robotraconteur_go/examples/reynard_the_robot/gen --output-dir gen robdef/experimental.reynard_the_robot.robdef
+//go:generate RobotRaconteurGenGo --go-import-prefix=github.com/robotraconteur/robotraconteur_go/examples/reynard_the_robot/gen --output-dir gen robdef/experimental.reynard_the_robot.robdef
 //go:generate gofmt -w gen

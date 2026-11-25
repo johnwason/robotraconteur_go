@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Go thunk source generator for Robot Raconteur service definitions.
-// Written to be merged into RobotRaconteurGen as --lang=go (see
-// gen/upstream_merge/README.md); it follows the structure of
+// Go package generator for Robot Raconteur service definitions (used by
+// RobotRaconteurGenGo, gen/main.cpp). Its structure follows the core's
 // CSharpServiceLangGen.
 
 #pragma once
