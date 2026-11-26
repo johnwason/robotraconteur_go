@@ -62,11 +62,19 @@ esac
 if [ -z "${RR_SRC:-}" ]; then
   RR_SRC=$BUILD_DIR/robotraconteur
   if [ ! -d "$RR_SRC/.git" ]; then
-    echo "build_native: cloning $RR_GIT_URL ($RR_GIT_REF)"
-    git clone --quiet "$RR_GIT_URL" "$RR_SRC"
+    echo "build_native: cloning $RR_GIT_URL"
+    git clone --quiet --no-checkout "$RR_GIT_URL" "$RR_SRC"
   fi
-  git -C "$RR_SRC" fetch --quiet origin "$RR_GIT_REF" 2>/dev/null || true
-  git -C "$RR_SRC" checkout --quiet "$RR_GIT_REF" 2>/dev/null || git -C "$RR_SRC" checkout --quiet FETCH_HEAD
+  # Build exactly the requested ref: fetch it (a failure is an error, not a
+  # fallback to an older checkout) and check out the fetched commit, detached,
+  # so a stale local branch of the same name is never used.
+  git -C "$RR_SRC" remote set-url origin "$RR_GIT_URL"
+  if ! git -C "$RR_SRC" fetch --quiet origin "$RR_GIT_REF"; then
+    echo "build_native: could not fetch $RR_GIT_REF from $RR_GIT_URL" >&2
+    exit 1
+  fi
+  git -C "$RR_SRC" checkout --quiet --detach FETCH_HEAD
+  echo "build_native: $RR_GIT_URL $RR_GIT_REF is $(git -C "$RR_SRC" rev-parse HEAD)"
 fi
 RR_SRC=$(cd "$RR_SRC" && pwd)
 echo "build_native: core $RR_SRC ($(git -C "$RR_SRC" describe --tags --always 2>/dev/null || echo unknown)) -> $PREFIX"
