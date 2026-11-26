@@ -122,6 +122,74 @@ jobs:
           go vet ./...
           go test -count=1 ./...
 
+  # The Windows user build from the README: MSYS2 MINGW64, scripts/build_native.sh,
+  # then a separate module and the repository's own tests, all built natively.
+  windows-user-build:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: robotraconteur_go
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.RR_REPO }}
+          ref: ${{ env.RR_REF }}
+          path: robotraconteur
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            git
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-boost
+            mingw-w64-x86_64-go
+      - name: Build and install the native libraries
+        run: |
+          go version
+          RR_SRC=$(cygpath -u "$GITHUB_WORKSPACE")/robotraconteur JOBS=4 \
+            robotraconteur_go/scripts/build_native.sh "$HOME/rrgo"
+      - name: Build and test a module that uses the bindings
+        run: |
+          export PKG_CONFIG_PATH=$HOME/rrgo/lib/pkgconfig PATH=$HOME/rrgo/bin:$PATH
+          pkg-config --libs robotraconteur-go
+          mkdir user && cp -r robotraconteur_go/examples/reynard_the_robot/. user/
+          cd user
+          rm -rf gen
+          cat > go.mod <<EOF
+          module example.com/reynard
+          go 1.27
+          require github.com/robotraconteur/robotraconteur_go v0.0.0
+          replace github.com/robotraconteur/robotraconteur_go => ../robotraconteur_go
+          EOF
+          sed -i 's#github.com/robotraconteur/robotraconteur_go/examples/reynard_the_robot#example.com/reynard#g' \
+            $(grep -rl "examples/reynard_the_robot" . )
+          go generate ./...
+          go vet ./...
+          go test -count=1 ./...
+      - name: Repository tests (native)
+        run: |
+          export PKG_CONFIG_PATH=$HOME/rrgo/lib/pkgconfig PATH=$HOME/rrgo/bin:$PATH
+          cd robotraconteur_go
+          mkdir -p test/gen
+          RobotRaconteurGenGo --go-import-prefix=github.com/robotraconteur/robotraconteur_go/test/gen \
+            -I ../robotraconteur/test/robdef --output-dir test/gen \
+            com.robotraconteur.testing.TestService1.robdef com.robotraconteur.testing.TestService2.robdef \
+            com.robotraconteur.testing.TestService3.robdef com.robotraconteur.testing.TestService4.robdef \
+            com.robotraconteur.testing.TestService5.robdef
+          RobotRaconteurGenGo --go-import-prefix=github.com/robotraconteur/robotraconteur_go/test/gen \
+            --output-dir test/gen test/robdef/experimental.gen_test_go_names.robdef
+          gofmt -w test/gen
+          cp ../robotraconteur/test/data/test_vectors.bin test/testvectors/
+          go vet -unsafeptr=false ./robotraconteur/... ./test/...
+          go test -count=1 -timeout 600s ./robotraconteur/... ./test/loopback ./test/manualnode ./test/gennames
+
   # Windows: core and Go bindings cross-built with MinGW-w64 in podman (static,
   # no MinGW DLLs needed), test binaries run on a Windows runner.
   windows-build:
