@@ -48,9 +48,10 @@ PREFIX_PATH=${PREFIX_PATH:-}
 JOBS=${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)}
 RR_GIT_URL=${RR_GIT_URL:-https://github.com/robotraconteur/robotraconteur.git}
 RR_GIT_REF=${RR_GIT_REF:-v1.3.0}
-read -r -a EXTRA <<< "${CMAKE_ARGS:-}"
-read -r -a CORE_EXTRA <<< "${CORE_CMAKE_ARGS:-}"
-read -r -a TARGETS <<< "${CORE_TARGETS:-}"
+# Split on any whitespace, including newlines (read -a alone stops at the first line)
+read -r -d '' -a EXTRA <<< "${CMAKE_ARGS:-}" || true
+read -r -d '' -a CORE_EXTRA <<< "${CORE_CMAKE_ARGS:-}" || true
+read -r -d '' -a TARGETS <<< "${CORE_TARGETS:-}" || true
 
 GEN=()
 if command -v ninja > /dev/null; then GEN=(-G Ninja); fi
