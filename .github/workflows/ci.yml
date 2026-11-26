@@ -8,7 +8,7 @@ env:
   # Robot Raconteur 1.3.0 with MinGW-w64 support (needed by the Windows build), branch
   # mingw-support of johnwason/robotraconteur until it is merged upstream.
   RR_REPO: johnwason/robotraconteur
-  RR_REF: 95f3a7db82022af7ee842b688aca9efddf410fc0
+  RR_REF: 78a49cd3dc66d2a96296dad23c8549c69b74192d
 
 jobs:
   linux:
