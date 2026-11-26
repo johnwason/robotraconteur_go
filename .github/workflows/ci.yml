@@ -5,10 +5,10 @@ on:
   workflow_dispatch:
 
 env:
-  # Robot Raconteur 1.3.0 with MinGW-w64 support (needed by the Windows build), branch
-  # mingw-support of johnwason/robotraconteur until it is merged upstream.
-  RR_REPO: johnwason/robotraconteur
-  RR_REF: 78a49cd3dc66d2a96296dad23c8549c69b74192d
+  # Robot Raconteur core: 1.3.0 plus the MinGW-w64 support of #497 (needed by
+  # the Windows builds; not yet in a release).
+  RR_REPO: robotraconteur/robotraconteur
+  RR_REF: d8a4b22855bda54d2670038b2dbdc10caea9ba4d
 
 jobs:
   linux:

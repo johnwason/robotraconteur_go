@@ -175,19 +175,19 @@ in your `go.mod`:
 ### Windows (MinGW-w64)
 
 cgo needs a GCC-compatible C++ compiler on Windows, so the core and the
-native library are built with MinGW-w64 rather than MSVC. The core's
-MinGW-w64 support is on branch
-[`mingw-support`](https://github.com/johnwason/robotraconteur/tree/mingw-support)
-of johnwason/robotraconteur until it is merged upstream and released, so
-select it when building.
+native library are built with MinGW-w64 rather than MSVC. The core
+supports MinGW-w64 from
+[robotraconteur#497](https://github.com/robotraconteur/robotraconteur/pull/497)
+on. That change is on `master` but not yet in a release (1.3.0 does not
+have it), so build the core from `master` (`RR_GIT_REF=master`) until the
+next release.
 
 Native build with [MSYS2](https://www.msys2.org) (in the "MSYS2 MINGW64" shell):
 
 ```sh
 pacman -S --needed git mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja \
   mingw-w64-x86_64-pkgconf mingw-w64-x86_64-boost mingw-w64-x86_64-go
-RR_GIT_URL=https://github.com/johnwason/robotraconteur.git RR_GIT_REF=mingw-support \
-  scripts/build_native.sh ~/robotraconteur-go
+RR_GIT_REF=master scripts/build_native.sh ~/robotraconteur-go
 export PKG_CONFIG_PATH=$HOME/robotraconteur-go/lib/pkgconfig
 go build ./...
 ```
