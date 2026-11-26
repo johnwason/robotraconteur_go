@@ -1,4 +1,11 @@
+<p align="center"><img src="docs/figures/logo-header.svg"></p>
+
 # Robot Raconteur Go bindings
+
+[![CI](https://github.com/robotraconteur/robotraconteur_go/actions/workflows/ci.yml/badge.svg)](https://github.com/robotraconteur/robotraconteur_go/actions/workflows/ci.yml)
+![license - apache 2.0](https://img.shields.io/:license-Apache%202.0-yellowgreen.svg)
+![Go](https://img.shields.io/badge/Go-1.27+-blue.svg?style=flat&logo=go)
+[![Go Reference](https://pkg.go.dev/badge/github.com/robotraconteur/robotraconteur_go/robotraconteur.svg)](https://pkg.go.dev/github.com/robotraconteur/robotraconteur_go/robotraconteur)
 
 Go bindings for [Robot Raconteur](https://github.com/robotraconteur/robotraconteur).
 They are built the way the C# and Java bindings are: SWIG wraps the C++ core
