@@ -16,7 +16,8 @@
 #   RR_SRC            Robot Raconteur core source checkout to build. If unset,
 #                     RR_GIT_URL is cloned at RR_GIT_REF into BUILD_DIR/robotraconteur.
 #   RR_GIT_URL        default https://github.com/robotraconteur/robotraconteur.git
-#   RR_GIT_REF        default v1.3.0 (a tag, branch or commit)
+#   RR_GIT_REF        default d8a4b22855bda54d2670038b2dbdc10caea9ba4d (master: 1.3.0
+#                     + #498 + #497 MinGW-w64; the commit CI tests). A tag, branch or commit.
 #   BUILD_DIR         build directory, default ./build-native
 #   CORE_BUILD_DIR    build directory of the core, default BUILD_DIR/core
 #   PREFIX_PATH       extra dependency prefixes (;-separated), e.g. where Boost is
@@ -47,7 +48,7 @@ BUILD_TYPE=${BUILD_TYPE:-Release}
 PREFIX_PATH=${PREFIX_PATH:-}
 JOBS=${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)}
 RR_GIT_URL=${RR_GIT_URL:-https://github.com/robotraconteur/robotraconteur.git}
-RR_GIT_REF=${RR_GIT_REF:-v1.3.0}
+RR_GIT_REF=${RR_GIT_REF:-d8a4b22855bda54d2670038b2dbdc10caea9ba4d}
 # Split on any whitespace, including newlines (read -a alone stops at the first line)
 read -r -d '' -a EXTRA <<< "${CMAKE_ARGS:-}" || true
 read -r -d '' -a CORE_EXTRA <<< "${CORE_CMAKE_ARGS:-}" || true
@@ -63,13 +64,13 @@ if [ -z "${RR_SRC:-}" ]; then
   RR_SRC=$BUILD_DIR/robotraconteur
   if [ ! -d "$RR_SRC/.git" ]; then
     echo "build_native: cloning $RR_GIT_URL"
-    git clone --quiet --no-checkout "$RR_GIT_URL" "$RR_SRC"
+    git clone --quiet --no-checkout -- "$RR_GIT_URL" "$RR_SRC"
   fi
   # Build exactly the requested ref: fetch it (a failure is an error, not a
   # fallback to an older checkout) and check out the fetched commit, detached,
   # so a stale local branch of the same name is never used.
   git -C "$RR_SRC" remote set-url origin "$RR_GIT_URL"
-  if ! git -C "$RR_SRC" fetch --quiet origin "$RR_GIT_REF"; then
+  if ! git -C "$RR_SRC" fetch --quiet --end-of-options origin "$RR_GIT_REF"; then
     echo "build_native: could not fetch $RR_GIT_REF from $RR_GIT_URL" >&2
     exit 1
   fi

@@ -117,10 +117,20 @@ func downcastError(e *Error) error {
 
 // AsError converts any error into an *Error for transmission to a remote
 // client: *Error (or a wrapper around one) is used as is; any other error
-// becomes an UnknownError carrying err.Error().
+// becomes an UnknownError carrying err.Error(). An *Error without a Code
+// (CodeNone, which the core reads as "no error") becomes an UnknownError
+// with the same message, so a failure is never reported as success.
 func AsError(err error) *Error {
 	var rerr *Error
 	if errors.As(err, &rerr) {
+		if rerr.Code == CodeNone {
+			e := *rerr
+			e.Code = CodeUnknownError
+			if e.Name == "" || e.Name == builtinErrorNames[CodeNone] {
+				e.Name = "RobotRaconteur.UnknownError"
+			}
+			return &e
+		}
 		return rerr
 	}
 	return &Error{Code: CodeUnknownError, Name: "RobotRaconteur.UnknownError", Message: err.Error()}

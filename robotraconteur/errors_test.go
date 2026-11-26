@@ -68,6 +68,8 @@ func TestDirectorErrors(t *testing.T) {
 		{func() { setDirectorError(NewInvalidOperation("nope")) }, "RobotRaconteur.InvalidOperation: nope"},
 		{func() { setDirectorError(fmt.Errorf("wrapped: %w", NewKeyNotFound("k"))) }, "RobotRaconteur.KeyNotFound: k"},
 		{func() { setDirectorError(errors.New("plain")) }, "RobotRaconteur.UnknownError: plain"},
+		// an *Error without a Code is a failure, not "no error"
+		{func() { setDirectorError(&Error{Message: "nocode"}) }, "RobotRaconteur.UnknownError: nocode"},
 		{func() { panic("boom") }, "RobotRaconteur.UnknownError: panic in Go callback: boom"},
 	}
 	for _, c := range cases {

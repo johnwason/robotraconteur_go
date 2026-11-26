@@ -38,6 +38,11 @@ func (a *PasswordFileUserAuthenticator) nativeAuthenticator(*Node) (swig.NativeU
 
 // ServiceSecurityPolicy configures authentication for a service. Policies
 // typically contains {"requirevaliduser": "true", "allowobjectlock": "true"}.
+//
+// Unlike the C++ and Python bindings, "requirevaliduser" defaults to "true"
+// when Policies does not set it: a policy with an authenticator requires
+// clients to log in. Set "requirevaliduser": "false" explicitly to also allow
+// anonymous clients.
 type ServiceSecurityPolicy struct {
 	Authenticator UserAuthenticator
 	Policies      map[string]string
@@ -57,6 +62,9 @@ func (p *ServiceSecurityPolicy) toNative(n *Node) (swig.ServiceSecurityPolicy, e
 		defer swig.DeleteMap_strstr(m)
 		for k, v := range p.Policies {
 			m.Set(k, v)
+		}
+		if _, ok := p.Policies["requirevaliduser"]; !ok {
+			m.Set("requirevaliduser", "true")
 		}
 		return swig.NewServiceSecurityPolicy(a, m)
 	})

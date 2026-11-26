@@ -21,9 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           path: robotraconteur_go
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           repository: ${{ env.RR_REPO }}
           ref: ${{ env.RR_REF }}
           path: robotraconteur
@@ -89,12 +91,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           path: robotraconteur_go
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          repository: ${{ env.RR_REPO }}
-          ref: ${{ env.RR_REF }}
-          path: robotraconteur
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: "1.27"
@@ -104,10 +102,13 @@ jobs:
           sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config \
             libboost-all-dev libssl-dev libdbus-1-dev libbluetooth-dev libusb-1.0-0-dev
       - name: Build and install the native libraries
+        # No RR_SRC: the script fetches its default core commit, as for a user
         env:
-          RR_SRC: ${{ github.workspace }}/robotraconteur
           JOBS: "4"
-        run: robotraconteur_go/scripts/build_native.sh "$HOME/rrgo"
+        run: |
+          grep -q "RR_GIT_REF:-${{ env.RR_REF }}" robotraconteur_go/scripts/build_native.sh \
+            || { echo "::error::build_native.sh default core differs from RR_REF"; exit 1; }
+          robotraconteur_go/scripts/build_native.sh "$HOME/rrgo"
       - name: Build and test a module that uses the bindings
         run: |
           export PKG_CONFIG_PATH=$HOME/rrgo/lib/pkgconfig PATH=$HOME/rrgo/bin:$PATH
@@ -137,9 +138,11 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           path: robotraconteur_go
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           repository: ${{ env.RR_REPO }}
           ref: ${{ env.RR_REF }}
           path: robotraconteur
@@ -203,9 +206,11 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           path: robotraconteur_go
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           repository: ${{ env.RR_REPO }}
           ref: ${{ env.RR_REF }}
           path: robotraconteur
@@ -265,6 +270,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           path: robotraconteur_go
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:

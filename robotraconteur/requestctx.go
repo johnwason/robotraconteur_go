@@ -19,7 +19,7 @@ type requestInfo struct {
 	node        *Node
 	endpoint    uint32
 	servicePath string
-	user        swig.AuthenticatedUser
+	user        *AuthenticatedUser // copied: the request may outlive the native handle
 	adapter     *asyncAdapter
 }
 
@@ -35,20 +35,25 @@ func captureRequest(n *Node, a *asyncAdapter) *requestInfo {
 		r.servicePath = swig.ServerContextGetCurrentServicePath()
 		swig.Rrgo_clear_error()
 		if u := swig.ServerEndpointGetCurrentAuthenticatedUser(); u != nil && u.Swigcptr() != 0 {
-			r.user = u
+			// Copy into Go values and free the handle now: goroutines started
+			// by the service can keep ctx after the request completes.
+			r.user = &AuthenticatedUser{
+				Username:       u.GetUsername(),
+				Privileges:     vectorStrings(u.GetPrivileges()),
+				Properties:     vectorStrings(u.GetProperties()),
+				LoginTime:      timeFromMicros(u.GetLoginTime()),
+				LastAccessTime: timeFromMicros(u.GetLastAccessTime()),
+			}
+			swig.DeleteAuthenticatedUser(u)
 		}
 		swig.Rrgo_clear_error()
 	})
 	return r
 }
 
-// release frees the captured native handles once the request is complete.
-func (r *requestInfo) release() {
-	if r.user != nil {
-		swig.DeleteAuthenticatedUser(r.user)
-		r.user = nil
-	}
-}
+// release is called when the request is complete. The captured state is
+// plain Go values, so there is nothing to free; ctx stays valid.
+func (r *requestInfo) release() {}
 
 func (r *requestInfo) context() context.Context {
 	return context.WithValue(context.Background(), requestKey{}, r)
@@ -106,12 +111,8 @@ func CurrentAuthenticatedUser(ctx context.Context) (*AuthenticatedUser, error) {
 	if r.user == nil {
 		return nil, NewAuthenticationError("no authenticated user")
 	}
-	u := r.user
-	return &AuthenticatedUser{
-		Username:       u.GetUsername(),
-		Privileges:     vectorStrings(u.GetPrivileges()),
-		Properties:     vectorStrings(u.GetProperties()),
-		LoginTime:      timeFromMicros(u.GetLoginTime()),
-		LastAccessTime: timeFromMicros(u.GetLastAccessTime()),
-	}, nil
+	u := *r.user
+	u.Privileges = append([]string(nil), u.Privileges...)
+	u.Properties = append([]string(nil), u.Properties...)
+	return &u, nil
 }

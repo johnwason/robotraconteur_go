@@ -79,8 +79,9 @@ cd robotraconteur_go
 scripts/build_native.sh ~/.local/robotraconteur-go
 ```
 
-The script downloads the Robot Raconteur core source (`v1.3.0` by default)
-and builds it as a static library. It then builds this repository's native
+The script downloads the Robot Raconteur core source and builds it as a
+static library. By default it uses the commit CI tests,
+`d8a4b228`: 1.3.0 plus #498 and the MinGW-w64 support of #497. It then builds this repository's native
 library and the generator, and installs everything:
 
 | Installed file | Purpose |
@@ -95,7 +96,7 @@ These environment variables change what the script does:
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `RR_SRC` | (download) | Use this Robot Raconteur core checkout instead of downloading one |
-| `RR_GIT_URL`, `RR_GIT_REF` | `https://github.com/robotraconteur/robotraconteur.git`, `v1.3.0` | Core repository and tag, branch or commit to download |
+| `RR_GIT_URL`, `RR_GIT_REF` | `https://github.com/robotraconteur/robotraconteur.git`, `d8a4b228…` | Core repository and tag, branch or commit to download. The script stops if the fetch fails, and builds exactly the fetched commit |
 | `BUILD_DIR` | `./build-native` | Build directory; it can be deleted after installing |
 | `BUILD_TYPE` | `Release` | CMake build type |
 | `JOBS` | number of CPUs | Parallel compile jobs. The SWIG wrapper is a very large file, so use 1-2 on machines with little memory |
@@ -178,16 +179,15 @@ cgo needs a GCC-compatible C++ compiler on Windows, so the core and the
 native library are built with MinGW-w64 rather than MSVC. The core
 supports MinGW-w64 from
 [robotraconteur#497](https://github.com/robotraconteur/robotraconteur/pull/497)
-on. That change is on `master` but not yet in a release (1.3.0 does not
-have it), so build the core from `master` (`RR_GIT_REF=master`) until the
-next release.
+on. That change is not yet in a release (1.3.0 does not have it), but the
+build script's default core commit includes it.
 
 Native build with [MSYS2](https://www.msys2.org) (in the "MSYS2 MINGW64" shell):
 
 ```sh
 pacman -S --needed git mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja \
   mingw-w64-x86_64-pkgconf mingw-w64-x86_64-boost mingw-w64-x86_64-go
-RR_GIT_REF=master scripts/build_native.sh ~/robotraconteur-go
+scripts/build_native.sh ~/robotraconteur-go
 export PKG_CONFIG_PATH=$HOME/robotraconteur-go/lib/pkgconfig
 go build ./...
 ```
@@ -379,7 +379,7 @@ ctx, err := setup.Node.RegisterService("reynard", "experimental.reynard_the_robo
 Other service-side features:
 
 - **Readonly wires and pipes.** These get broadcasters in the `DefaultImpl` (`RRBroadcaster_state`). `rr.NewBroadcastDownsampler` adds per-client downsampling.
-- **Security.** Pass `rr.WithSecurityPolicy(&rr.ServiceSecurityPolicy{Authenticator: rr.NewPasswordFileUserAuthenticator(data), Policies: ...})` to `RegisterService`. Authenticators can also be Go functions (`rr.UserAuthenticatorFunc`) that return an `*rr.AuthenticatedUser` or an error. Service members can call `rr.CurrentAuthenticatedUser(ctx)` and `rr.CurrentServerContext(ctx)`.
+- **Security.** Pass `rr.WithSecurityPolicy(&rr.ServiceSecurityPolicy{Authenticator: rr.NewPasswordFileUserAuthenticator(data), Policies: ...})` to `RegisterService`. Authenticators can also be Go functions (`rr.UserAuthenticatorFunc`) that return an `*rr.AuthenticatedUser` or an error. Unlike the C++ and Python bindings, `requirevaliduser` defaults to `"true"` when `Policies` does not set it; set it to `"false"` to also allow anonymous clients. An `*rr.Error` returned without a `Code` is sent as `UnknownError`, never as success. Service members can call `rr.CurrentAuthenticatedUser(ctx)` and `rr.CurrentServerContext(ctx)`.
 
 ## Memory management
 
