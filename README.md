@@ -21,7 +21,7 @@ Go programs through cgo.
 | `native/gen/` | C++ side of the SWIG wrapper, one file per data model (generated, committed) |
 | `swig/` | Go SWIG interface: `RobotRaconteurGo.i`, `shared_ptr`/`intrusive_ptr` support, typemaps, error plumbing, `postprocess_go.py` (see [swig/README.md](swig/README.md)) |
 | `gen/` | `RobotRaconteurGenGo` (`GoServiceLangGen.cpp`, CLI in `main.cpp`) |
-| `test/` | golden generator output, Go ports of the upstream test services and clients, loopback/interop/crosscheck tests |
+| `test/` | golden generator output, Go ports of the upstream test services and clients, loopback/interop/crosscheck tests (need generated packages, see [Testing](#testing)) |
 | `examples/reynard_the_robot/` | Reynard client, simulated service, `go:generate` usage |
 | `scripts/build_native.sh` | builds and installs the native libraries, the generator and `robotraconteur-go.pc` (see [Building](#building)) |
 | `docker/`, `scripts/` | podman dev and MinGW cross images, development build/test scripts |
@@ -413,6 +413,27 @@ They matter when a custom time provider is installed (simulation).
 
 ## Testing
 
+**Generated packages.** The packages under `test/` and
+`examples/reynard_the_robot/` import Go packages generated from `.robdef`
+files: `test/gen/` and `examples/reynard_the_robot/gen/`. Generated code is
+not committed, so in a fresh clone (and on pkg.go.dev) those packages do not
+build until it is generated. The `robotraconteur` package itself does not
+depend on them. `scripts/test.sh` (and so `scripts/podman.sh test`) runs
+`scripts/gen_test.sh` first. Outside the dev container, with
+`RobotRaconteurGenGo` on `PATH`:
+
+```sh
+(cd examples/reynard_the_robot && go generate)
+RobotRaconteurGenGo --go-import-prefix=github.com/robotraconteur/robotraconteur_go/test/gen \
+    -I <robotraconteur source>/test/robdef --output-dir test/gen \
+    com.robotraconteur.testing.TestService1.robdef com.robotraconteur.testing.TestService2.robdef \
+    com.robotraconteur.testing.TestService3.robdef com.robotraconteur.testing.TestService4.robdef \
+    com.robotraconteur.testing.TestService5.robdef
+RobotRaconteurGenGo --go-import-prefix=github.com/robotraconteur/robotraconteur_go/test/gen \
+    --output-dir test/gen test/robdef/experimental.gen_test_go_names.robdef
+cp <robotraconteur source>/test/data/test_vectors.bin test/testvectors/
+```
+
 `scripts/podman.sh test` runs in a container with `--network=none`. Only
 loopback TCP, local and intra transports are used, and network discovery is
 not enabled. The tests cover:
@@ -434,3 +455,7 @@ disabled, because a CI runner is not isolated like the dev container.
 ## Not yet supported
 
 - macOS. The runtime is OS-neutral, but the core and toolchain setup for cgo has not been done.
+
+## License
+
+Apache License 2.0, the same as Robot Raconteur. See [LICENSE.txt](LICENSE.txt).
