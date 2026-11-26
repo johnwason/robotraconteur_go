@@ -18,5 +18,9 @@ files in this directory:
 - **`postprocess_go.py`**: rewrites the generated Go file (smart pointer
   aliases, upcasts; writes `upcasts_gen.go` and `rrgo_upcasts.cxx`).
 
-`cmake/gen_go_errors.py` generates the Go error types and constants from the
-core headers, and `cmake/gen_cgo_flags.py` writes the cgo link flags.
+`scripts/regen_swig.sh` runs SWIG and `postprocess_go.py` and commits the
+output: the Go side in `robotraconteur/internal/swig/` (the same for every
+platform) and the C++ side in `native/gen/` (one file per data model, LP64
+and LLP64, because SWIG maps `int64_t` differently). It also runs
+`cmake/gen_go_errors.py`, which generates the Go error types and constants
+from the core headers. Users build from the committed files, without SWIG.

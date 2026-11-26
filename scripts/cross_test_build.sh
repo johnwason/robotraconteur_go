@@ -27,6 +27,8 @@ gofmt -w test/gen
 cp "$RR_SRC/test/data/test_vectors.bin" test/testvectors/test_vectors.bin
 
 export GOOS=windows GOARCH=amd64 CGO_ENABLED=1
+# native libraries from scripts/build_mingw.sh; LIBDIR keeps host .pc files out
+export PKG_CONFIG_PATH=$GO_DIR/build-mingw/install/lib/pkgconfig PKG_CONFIG_LIBDIR=$GO_DIR/build-mingw/install/lib/pkgconfig
 export CC=x86_64-w64-mingw32-gcc-posix CXX=x86_64-w64-mingw32-g++-posix
 export GOFLAGS="${GOFLAGS:-} -p=2"
 

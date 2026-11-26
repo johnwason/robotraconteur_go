@@ -68,6 +68,59 @@ jobs:
           RRGO_CACHE_DIR: ${{ runner.temp }}/rr-go-cache
           RR_SRC_DIR: ${{ github.workspace }}/robotraconteur
         run: robotraconteur_go/scripts/podman.sh test
+      - name: Check committed SWIG sources are up to date
+        env:
+          RRGO_CACHE_DIR: ${{ runner.temp }}/rr-go-cache
+          RR_SRC_DIR: ${{ github.workspace }}/robotraconteur
+        run: |
+          robotraconteur_go/scripts/podman.sh shell scripts/regen_swig.sh
+          git -C robotraconteur_go diff --exit-code --stat -- robotraconteur native \
+            || { echo "::error::committed SWIG sources are out of date: run scripts/regen_swig.sh"; exit 1; }
+
+  # The user build from the README on a plain runner: scripts/build_native.sh,
+  # then a separate module that uses the bindings through pkg-config.
+  linux-user-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: robotraconteur_go
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.RR_REPO }}
+          ref: ${{ env.RR_REF }}
+          path: robotraconteur
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+      - name: apt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config \
+            libboost-all-dev libssl-dev libdbus-1-dev libbluetooth-dev libusb-1.0-0-dev
+      - name: Build and install the native libraries
+        env:
+          RR_SRC: ${{ github.workspace }}/robotraconteur
+          JOBS: "4"
+        run: robotraconteur_go/scripts/build_native.sh "$HOME/rrgo"
+      - name: Build and test a module that uses the bindings
+        run: |
+          export PKG_CONFIG_PATH=$HOME/rrgo/lib/pkgconfig PATH=$HOME/rrgo/bin:$PATH
+          pkg-config --libs robotraconteur-go
+          mkdir user && cp -r robotraconteur_go/examples/reynard_the_robot/. user/
+          cd user
+          rm -rf gen
+          cat > go.mod <<EOF
+          module example.com/reynard
+          go 1.27
+          require github.com/robotraconteur/robotraconteur_go v0.0.0
+          replace github.com/robotraconteur/robotraconteur_go => ../robotraconteur_go
+          EOF
+          sed -i 's#github.com/robotraconteur/robotraconteur_go/examples/reynard_the_robot#example.com/reynard#g' \
+            $(grep -rl "examples/reynard_the_robot" . )
+          go generate ./...
+          go vet ./...
+          go test -count=1 ./...
 
   # Windows: core and Go bindings cross-built with MinGW-w64 in podman (static,
   # no MinGW DLLs needed), test binaries run on a Windows runner.

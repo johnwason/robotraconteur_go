@@ -6,6 +6,8 @@ set -euo pipefail
 GO_DIR=/work/robotraconteur_go
 cd "$GO_DIR"
 export CGO_ENABLED=1
+# native libraries from scripts/build.sh (robotraconteur-go.pc)
+export PKG_CONFIG_PATH=$GO_DIR/build/install/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}
 # Keep link/compile parallelism bounded on small hosts
 export GOMAXPROCS=${GOMAXPROCS:-4}
 export GOFLAGS="${GOFLAGS:-} -p=2"

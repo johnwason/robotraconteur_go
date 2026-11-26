@@ -3,7 +3,7 @@
 # Produces the list of linker arguments (with generator expressions) needed to
 # link <target> into a Go program with cgo. Walks INTERFACE_LINK_LIBRARIES of
 # the target and its dependencies: targets become $<TARGET_LINKER_FILE:...>,
-# plain names become -l<name>, paths are kept as is. cmake/gen_cgo_flags.py
+# plain names become -l<name>, paths are kept as is. cmake/write_pkgconfig.cmake
 # then rewrites shared library paths into the -L/-l form accepted by cgo.
 
 function(_rrgo_walk_link item out_var)
