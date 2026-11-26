@@ -162,13 +162,16 @@ int main(int argc, char* argv[])
 
         if (vm.count("help"))
         {
-            std::cout << "RobotRaconteurGenGo version " << ROBOTRACONTEUR_VERSION_TEXT << std::endl << std::endl;
+            std::cout << "RobotRaconteurGenGo version " << RRGO_VERSION_TEXT << " (Robot Raconteur core "
+                      << ROBOTRACONTEUR_VERSION_TEXT << ")" << std::endl
+                      << std::endl;
             std::cout << generic_ << std::endl;
             return 0;
         }
         if (vm.count("version"))
         {
-            std::cout << "RobotRaconteurGenGo version " << ROBOTRACONTEUR_VERSION_TEXT << std::endl;
+            std::cout << "RobotRaconteurGenGo version " << RRGO_VERSION_TEXT << " (Robot Raconteur core "
+                      << ROBOTRACONTEUR_VERSION_TEXT << ")" << std::endl;
             return 0;
         }
         (void)thunksource; // generating thunk sources is the only action

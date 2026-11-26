@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
-project(RobotRaconteurGo LANGUAGES C CXX)
+# Version of the Go bindings; keep in sync with Version in robotraconteur/version.go
+project(RobotRaconteurGo VERSION 0.1.0 LANGUAGES C CXX)
 
 # Native part of the Robot Raconteur Go bindings (see README.md, "Building"):
 #   - libRobotRaconteurGoNative.a: the committed SWIG C++ wrapper
@@ -49,6 +50,7 @@ install(TARGETS RobotRaconteurGoNative ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDI
 find_package(Boost REQUIRED COMPONENTS program_options filesystem)
 add_executable(RobotRaconteurGenGo gen/main.cpp gen/GoServiceLangGen.cpp gen/GoServiceLangGen.h)
 target_link_libraries(RobotRaconteurGenGo RobotRaconteurCore Boost::program_options Boost::filesystem)
+target_compile_definitions(RobotRaconteurGenGo PRIVATE RRGO_VERSION_TEXT="${PROJECT_VERSION}")
 install(TARGETS RobotRaconteurGenGo RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # robotraconteur-go.pc: written at install time with the installed library
@@ -72,7 +74,8 @@ install(
           set(RRGO_LIBDIR \"${CMAKE_INSTALL_LIBDIR}\")
           set(RRGO_LINK_LIBS_FILE \"${CMAKE_BINARY_DIR}/rrgo_link_libs.txt\")
           set(RRGO_SYSTEM_LIBS \"${RRGO_SYSTEM_LIBS}\")
-          set(RRGO_VERSION \"${RobotRaconteur_VERSION}\")
+          set(RRGO_VERSION \"${PROJECT_VERSION}\")
+          set(RRGO_CORE_VERSION \"${RobotRaconteur_VERSION}\")
           set(RRGO_LINK_GROUP ${RRGO_LINK_GROUP})
           include(\"${CMAKE_SOURCE_DIR}/cmake/write_pkgconfig.cmake\")")
 

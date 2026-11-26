@@ -1,11 +1,5 @@
 # Robot Raconteur Go bindings
 
-> **Work in progress, AI generated.** These bindings, the code generator,
-> the tests and this documentation were written by an AI coding assistant
-> (Claude) under human direction. They have not been fully reviewed, and the
-> API may change. Review before relying on them, especially the native
-> conversion layer and the public API.
-
 Go bindings for [Robot Raconteur](https://github.com/robotraconteur/robotraconteur).
 They are built the way the C# and Java bindings are: SWIG wraps the C++ core
 (using the core's shared `SWIG/*.i` files plus the Go interface in `swig/`),
@@ -14,8 +8,9 @@ and a hand-written Go runtime on top of it provides an idiomatic API.
 generates Go packages from `.robdef` files. It uses the core's robdef parser
 and verifier, so it accepts exactly what the other generators accept.
 
-Status: Linux (x86_64) and Windows (x86_64, MinGW-w64). The native core is
-linked statically into Go programs through cgo.
+Version 0.1.0, for Robot Raconteur 1.3. Supported platforms: Linux (x86_64)
+and Windows (x86_64, MinGW-w64). The native core is linked statically into
+Go programs through cgo.
 
 ## Layout
 
@@ -167,11 +162,6 @@ go build -tags rrgo_customenv ./...
 | `undefined reference to ...` while linking | The native libraries are out of date. Rerun `build_native.sh` |
 | `cannot find -lboost_...` | The Boost packages are missing, or the system was upgraded after the native build. Install Boost and rerun `build_native.sh` |
 | `invalid flag in pkg-config --libs` | A hand-edited `.pc` file contains a flag that cgo does not allow. Regenerate it with `build_native.sh` |
-
-The module path is `github.com/robotraconteur/robotraconteur_go`. Until the
-repository is published there, use a local clone with a `replace` directive
-in your `go.mod`:
-`replace github.com/robotraconteur/robotraconteur_go => ../robotraconteur_go`.
 
 ### Windows (MinGW-w64)
 

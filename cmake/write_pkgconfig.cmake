@@ -3,7 +3,7 @@
 #
 # Inputs: RRGO_PREFIX, RRGO_LIBDIR, RRGO_LINK_LIBS_FILE (one linker item per
 # line: the core and its dependencies, from cmake/GoLinkFlags.cmake),
-# RRGO_SYSTEM_LIBS, RRGO_VERSION, RRGO_LINK_GROUP (wrap the archives in
+# RRGO_SYSTEM_LIBS, RRGO_VERSION (of the Go bindings), RRGO_CORE_VERSION, RRGO_LINK_GROUP (wrap the archives in
 # -Wl,--start-group/--end-group; not on macOS).
 #
 # cgo reads the file through "#cgo pkg-config: robotraconteur-go" and checks
@@ -63,7 +63,7 @@ prefix=${RRGO_PREFIX}
 libdir=\${prefix}/${RRGO_LIBDIR}
 
 Name: robotraconteur-go
-Description: Native libraries of the Robot Raconteur Go bindings (static)
+Description: Native libraries of the Robot Raconteur Go bindings (static; Robot Raconteur core ${RRGO_CORE_VERSION})
 Version: ${RRGO_VERSION}
 Cflags: -DRRGO_NATIVE_FINGERPRINT=${_fp}
 Libs: ${_link} ${RRGO_SYSTEM_LIBS}
